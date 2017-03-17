@@ -8,6 +8,7 @@ import numpy as np
 from tensorflow.contrib.rnn import BasicLSTMCell
 from sklearn.utils import shuffle as group_shuffle
 from tensorflow.contrib.layers import xavier_initializer as glorot
+from embeddings import Embeddings
 sk_seed = 0
 
 ''' Things to think about
@@ -192,8 +193,9 @@ seq_len_train, seq_len_val = conll_data.get_seq_length()
 train_dec_mask = np.sign(X_train[1])
 test_dec_mask  = np.sign(X_test[1])
 
+emb = Embeddings(conll_data.vocab, conll_data.inv_vocab)
 # embedding is a numpy array [vocab size x embedding dimension]
-embedding = conll_data.get_embedding_matrix(\
+embedding = emb.get_embedding_matrix(\
             model_path='data/google_news_300.bin',
             save=True,
             load_saved=True)
