@@ -45,7 +45,7 @@ embedding = emb.get_embedding_matrix(\
 ###############################################################################
 # Main stuff
 ###############################################################################
-model = SimpleEncDec(\
+model = BasicEncDec(\
         num_units=num_units,
         max_seq_len=max_arg_len,
         embedding=embedding)
