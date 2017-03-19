@@ -5,28 +5,28 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
   def __init__(self, num_units, max_seq_len, embedding):
-    keep_prob = tf.placeholder(tf.float32)
+    self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32
     self.int_type = tf.int32
 
     vocab_size = embedding.shape[0]
     # Embedding tensor is of shape [vocab_size x embedding_size]
-    embedding_tensor = tf.get_variable(
+    self.embedding_tensor = tf.get_variable(
                         name="embedding", shape=embedding.shape,
                         initializer=tf.constant_initializer(embedding),
                         trainable=False)
 
-    enc_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
-    enc_input = self.embedded(enc_input, embedding_tensor)
-    enc_input_len = tf.placeholder(self.int_type, shape=[None,])
+    self.enc_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
+    self.enc_input = self.embedded(self.enc_input, embedding_tensor)
+    self.enc_input_len = tf.placeholder(self.int_type, shape=[None,])
 
-    targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
-    dec_input = self.embedded(targets, embedding_tensor)
-    dec_input_len = tf.placeholder(self.int_type, shape=[None,])
+    self.targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
+    dec_input = self.embedded(self.targets, embedding_tensor)
+    self.dec_input_len = tf.placeholder(self.int_type, shape=[None,])
     # weight mask shape [batch_size x sequence_length]
-    dec_input_weight_mask = tf.placeholder(self.float_type, shape=[None, max_seq_len])
+    self.dec_weight_mask = tf.placeholder(self.float_type, shape=[None, max_seq_len])
 
-    batch_size = tf.shape(enc_input)[0]
+    batch_size = tf.shape(self.enc_input)[0]
 
     cell = BasicLSTMCell(num_units, state_is_tuple=True)
     # cell = DropoutWrapper(cell, output_keep_prob=keep_prob)
@@ -34,12 +34,12 @@ class BasicEncDec():
 
     init_state = cell.zero_state(batch_size, self.float_type)
     # \begin{magic}
-    encoded_state = self.encoder(cell, enc_input, enc_input_len, init_state)
-    decoded_outputs = self.decoder_train(cell, dec_input, dec_input_len,
+    encoded_state = self.encoder(cell, self.enc_input, self.enc_input_len, init_state)
+    decoded_outputs = self.decoder_train(cell, dec_input, self.dec_input_len,
                       encoded_state)
     logits = self.out_logits(decoded_outputs, num_units, max_seq_len, vocab_size)
     # \end{magic}
-    loss = self.get_loss(logits, targets, dec_input_weight_mask)
+    loss = self.get_loss(logits, self.targets, self.dec_weight_mask)
     self.cost = tf.reduce_sum(loss)
     self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
 

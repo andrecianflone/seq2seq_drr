@@ -85,5 +85,6 @@ class Embeddings():
         emb_matrix[v] = np.random.rand(emb_dim)
 
     del model # Hint to Python to reduce memory
-    print("words randomly initialized: {}".format(out_of_model))
+    if out_of_model > 0:
+      print("words randomly initialized: {}".format(out_of_model))
     return emb_matrix

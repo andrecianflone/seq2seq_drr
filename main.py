@@ -8,10 +8,11 @@ import tensorflow as tf
 import numpy as np
 from sklearn.utils import shuffle as group_shuffle
 from enc_dec import BasicEncDec
+from datetime import datetime
 sk_seed = 0
 
 # Some hyperparams
-nb_epoch       = 2               # max training epochs
+nb_epochs      = 2               # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
@@ -24,11 +25,14 @@ max_time_steps = 100
 ###############################################################################
 conll_data = Data(max_arg_len=max_arg_len, maxlen=maxlen)
 # X is a list of narrays: [arg1, arg2] , args are integers
-# y is a list of narrays: [label_low_level, label_1st_level]
-(X_train, y_train), (X_test, y_test) = conll_data.get_data()
+# y is a numpy array: [samples x classes]
+(X_train, classes_train), (X_test, classes_test) = conll_data.get_data()
+x_train_enc, x_train_dec = X_train[0], X_train[1]
+x_test_enc, x_test_dec = X_test[0], X_test[1]
 
-# Sequence length, [length_arg1, legnth_arg2]
+# Sequence length as numpy array shape [samples x 2]
 seq_len_train, seq_len_val = conll_data.get_seq_length()
+enc_len_train, dec_len_train = seq_len_train[:,0], seq_len_train[:,1]
 
 # For mask to work, padding must be integer 0
 train_dec_mask = np.sign(X_train[1])
@@ -51,7 +55,7 @@ model = BasicEncDec(\
         embedding=embedding)
 
 def make_batches(data, batch_size, shuffle=True):
-  """ Batches the passed data, even if data is a list of numpy arrays
+  """ Batches the passed data
   Args:
     data       : a list of numpy arrays
     batch_size : int
@@ -60,20 +64,39 @@ def make_batches(data, batch_size, shuffle=True):
     list of original numpy arrays but sliced
   """
   sk_seed = np.random.randint(0,10000)
-  if shuffle: data = group_shuffle(data, random_state=sk_seed)
-  data_size = len(data)
+  if shuffle: data = group_shuffle(*data, random_state=sk_seed)
+  data_size = len(data[0])
   batch_per_epoch = int(data_size/batch_size) + 1
-  for epoch in range(num_epochs):
-    for batch_num in range(batch_per_epoch):
-      start_index = batch_num * batch_size
-      end_index = min((batch_num + 1) * batch_size, data_size)
-      yield data[start_index:end_index]
+  for batch_num in range(batch_per_epoch):
+    start_index = batch_num * batch_size
+    end_index = min((batch_num + 1) * batch_size, data_size)
+    batch = []
+    for d in data:
+      batch.append(d[start_index:end_index])
+    yield batch
 
 with tf.Session() as sess:
   tf.global_variables_initializer().run()
-  for epoch in nb_epochs:
-    data = [X_train, y_train, seq_len_train]
+  data = [x_train_enc, x_train_dec, enc_len_train, dec_len_train, train_dec_mask]
+  for epoch in range(nb_epochs):
+    t1 = datetime.now()
     batches = make_batches(data, batch_size,shuffle=True)
     for batch in batches:
+      b_train_enc, b_train_dec = batch[0], batch[1]
+      b_enc_len_train, b_dec_len_train = batch[2], batch[3]
+      b_train_dec_mask = batch[4]
       fetch = [model.optimizer, model.cost]
-      # feed = {enc_input: , enc_input_len: , dec_input:, dec_input_len:, dec_input_weight_mask}
+      feed = {
+               model.enc_input       : b_train_enc,
+               model.enc_input_len   : b_enc_len_train,
+               model.targets         : b_train_dec,
+               model.dec_input_len   : b_dec_len_train,
+               model.dec_weight_mask : b_train_dec_mask
+             }
+      _, loss = sess.run(fetch,feed)
+
+      diff_t = (t1 - datetime.now()).total_seconds()
+      print('epoch: {:2.0f} time: {:>4.1f} | loss: {:>3.4f} '.format(
+        epoch, diff_t, loss, end='\r'))
+
+
