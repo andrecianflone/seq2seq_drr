@@ -95,7 +95,7 @@ with tf.Session() as sess:
              }
       _, loss = sess.run(fetch,feed)
 
-      diff_t = (t1 - datetime.now()).total_seconds()
+      diff_t = (datetime.now() - t1).total_seconds()
       print('epoch: {:2.0f} time: {:>4.1f} | loss: {:>3.4f} '.format(
         epoch, diff_t, loss, end='\r'))
 

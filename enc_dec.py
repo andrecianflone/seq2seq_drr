@@ -129,7 +129,10 @@ class BasicEncDec():
     """
     # We need to delete zeroed elements in targets, beyond max sequence
     max_seq = tf.reduce_max(tf.reduce_sum(weight_mask, axis=1))
-    # TODO slice
+    max_seq = tf.to_int32(max_seq)
+    # Slice time dimension to max_seq
+    targets = tf.slice(targets, [0, 0], [-1, max_seq])
+    weight_mask = tf.slice(weight_mask, [0,0], [-1, max_seq])
     return tf.contrib.seq2seq.sequence_loss(logits, targets, weight_mask)
 
   def predict(self):
