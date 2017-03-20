@@ -17,11 +17,11 @@ class BasicEncDec():
                         trainable=False)
 
     self.enc_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
-    self.enc_input = self.embedded(self.enc_input, embedding_tensor)
+    self.enc_embedded = self.embedded(self.enc_input, self.embedding_tensor)
     self.enc_input_len = tf.placeholder(self.int_type, shape=[None,])
 
     self.targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
-    dec_input = self.embedded(self.targets, embedding_tensor)
+    self.dec_embedded = self.embedded(self.targets, self.embedding_tensor)
     self.dec_input_len = tf.placeholder(self.int_type, shape=[None,])
     # weight mask shape [batch_size x sequence_length]
     self.dec_weight_mask = tf.placeholder(self.float_type, shape=[None, max_seq_len])
@@ -34,12 +34,13 @@ class BasicEncDec():
 
     init_state = cell.zero_state(batch_size, self.float_type)
     # \begin{magic}
-    encoded_state = self.encoder(cell, self.enc_input, self.enc_input_len, init_state)
-    decoded_outputs = self.decoder_train(cell, dec_input, self.dec_input_len,
-                      encoded_state)
-    logits = self.out_logits(decoded_outputs, num_units, max_seq_len, vocab_size)
+    encoded_state = self.encoder(cell, self.enc_embedded, self.enc_input_len,
+                    init_state)
+    self.decoded_outputs = self.decoder_train(cell, self.dec_embedded,
+                      self.dec_input_len, encoded_state)
+    self.logits = self.out_logits(self.decoded_outputs, num_units, vocab_size)
     # \end{magic}
-    loss = self.get_loss(logits, self.targets, self.dec_weight_mask)
+    loss = self.get_loss(self.logits, self.targets, self.dec_weight_mask)
     self.cost = tf.reduce_sum(loss)
     self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
 
@@ -78,6 +79,8 @@ class BasicEncDec():
               cell, dec_fn_train, inputs=x, sequence_length=seq_len)
 
     # Outputs will be Tensor shaped [batch_size, max_time, cell.output_size]
+    # Max_time is the longest sequence in THIS batch, meaning the longest
+    # in sequence_length. May be shorter than *max*
     return outputs
 
   def decoder_inference(self, scope="inference"):
@@ -94,8 +97,14 @@ class BasicEncDec():
               cell, dec_fn_train, inputs=None, sequence_length=None)
     return outputs
 
-  def out_logits(self, decoded_outputs, num_units, max_seq_len, vocab_size):
+  def out_logits(self, decoded_outputs, num_units, vocab_size):
     """ Softmax over decoder timestep outputs states """
+
+    # We need to get the sequence length for *this* batch, this will not be
+    # equal for each batch since the decoder is dynamic. Meaning length is
+    # equal to the longest sequence in batch, not the max
+    max_seq_len = tf.shape(decoded_outputs)[1]
+
     with tf.variable_scope("softmax"):
       w = tf.get_variable("weights", [num_units, vocab_size],
           dtype=self.float_type, initializer=glorot())
@@ -118,6 +127,9 @@ class BasicEncDec():
       weigth_mask : valid logits should have weight "1" and padding "0",
         [batch_size, seq_len] of dtype float
     """
+    # We need to delete zeroed elements in targets, beyond max sequence
+    max_seq = tf.reduce_max(tf.reduce_sum(weight_mask, axis=1))
+    # TODO slice
     return tf.contrib.seq2seq.sequence_loss(logits, targets, weight_mask)
 
   def predict(self):
