@@ -29,6 +29,7 @@ conll_data = Data(max_arg_len=max_arg_len, maxlen=maxlen)
 (X_train, classes_train), (X_test, classes_test) = conll_data.get_data()
 x_train_enc, x_train_dec = X_train[0], X_train[1]
 x_test_enc, x_test_dec = X_test[0], X_test[1]
+# TODO: Need decoder targets!! Target is decoder input offset by 1
 
 # Sequence length as numpy array shape [samples x 2]
 seq_len_train, seq_len_val = conll_data.get_seq_length()
