@@ -42,6 +42,7 @@ x_test_enc, x_test_dc = X_test[-1], X_test[1]
 seq_len_train, seq_len_val = conll_data.get_seq_length()
 enc_len_train, dec_len_train = seq_len_train[:,0], seq_len_train[:,1]
 
+# Decoder loss masking
 # For mask to work, padding must be integer 0
 train_dec_mask = np.sign(X_train[1])
 test_dec_mask  = np.sign(X_test[1])
@@ -54,6 +55,7 @@ embedding = emb.get_embedding_matrix(\
             save=True,
             load_saved=True)
 
+# TODO: For conditional enc/dec, concat embedding with y class
 
 ###############################################################################
 # Main stuff

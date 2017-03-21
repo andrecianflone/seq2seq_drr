@@ -41,8 +41,9 @@ class BasicEncDec():
                       self.dec_input_len, encoded_state)
     self.logits = self.out_logits(self.decoded_outputs, num_units, vocab_size)
     # \end{magic}
-    loss = self.get_loss(self.logits, self.dec_targets, self.dec_weight_mask)
-    self.cost = tf.reduce_sum(loss)
+    self.generator_loss = \
+            self.get_loss(self.logits, self.dec_targets, self.dec_weight_mask)
+    self.cost = tf.reduce_sum(self.generator_loss)
     self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
 
   def embedded(self, word_ids, embedding_tensor, scope="embedding"):
@@ -137,7 +138,7 @@ class BasicEncDec():
     return tf.contrib.seq2seq.sequence_loss(logits, targets, weight_mask)
 
   def predict(self):
-    # TODO: simply argmax over logits
+    """ In inference step, must predict one step at a time. Beam search? """
     pass
 
 
