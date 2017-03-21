@@ -19,8 +19,11 @@ class Data():
         split_input=True, # boolean, split input into separate numpy arrays
         train_file = "data/train.json",
         val_file = "data/dev.json",
-        vocab=None,
-        inv_vocab=None):
+        decoder_targets=False, # second arg without bos
+        bos_tag = None, # beginning of sequence tag
+        eos_tag = None, # end of sequence tag
+        vocab=None, # If none, will create the vocab
+        inv_vocab=None): # If none, generates inverse vocab
 
     self.train_file   = train_file
     self.val_file     = val_file
@@ -29,6 +32,8 @@ class Data():
     self.inv_vocab    = inv_vocab # set in method get_data
     self.pad_val      = '<pad>'
     self.total_tokens = 0
+    self.bos_tag      = bos_tag
+    self.eos_tag      = eos_tag
     self.maxlen       = maxlen
     self.split_input  = split_input
     # Sense mapping dict, or list of dicts
@@ -39,14 +44,14 @@ class Data():
 
 
   def get_data(self, w_sent_len=False):
-    """ Return x/y for train/val
-    If
-    """
+    """ Return x/y for train/val """
+
+    # TODO: because of all the list changes, should use collections.deque
 
     # Load data as lists of tokens
-    x_train, y_train, seq_len_train= \
+    x_train, y_train, seq_len_train, dec_targ_train= \
         self.load_from_file(self.train_file, self.max_arg_len)
-    x_val, y_val, seq_len_val = \
+    x_val, y_val, seq_len_val, dec_targ_val= \
         self.load_from_file(self.val_file, self.max_arg_len)
 
     # Array with elements arg1 length, arg2 length
@@ -59,8 +64,10 @@ class Data():
     y_val = self.set_output_for_network(y_val)
 
     # Pad input according to split
-    x_train = self.pad_input(x_train, self.seq_len_train)
-    x_val   = self.pad_input(x_val, self.seq_len_val)
+    x_train = self.pad_input(x_train, self.seq_len_train, self.split_input)
+    x_val   = self.pad_input(x_val, self.seq_len_val, self.split_input)
+    dec_targ_train = self.pad_input(dec_targ_train, split=False)
+    dec_targ_val = self.pad_input(dec_targ_val, split=False)
 
     # Create vocab
     if self.vocab == None:
@@ -68,19 +75,23 @@ class Data():
     self.total_tokens = len(self.vocab)
 
     # Integerize x
-    x_train = self.integerize(x_train, self.vocab, self.maxlen)
-    x_val = self.integerize(x_val, self.vocab, self.maxlen)
+    x_train = self.integerize(x_train, self.vocab)
+    x_val = self.integerize(x_val, self.vocab)
+    dec_targ_train = self.integerize(dec_targ_train, self.vocab)
+    dec_targ_val = self.integerize(dec_targ_val, self.vocab)
 
     # Make x into numpy arrays!
     x_train = np.array(x_train)
     x_val = np.array(x_val)
+    dec_targ_train = np.array(dec_targ_train)
+    dec_targ_val = np.array(dec_targ_val)
 
     # Split the input between arguments if so desired
     if self.split_input:
       x_train = self.split_x(x_train)
       x_val = self.split_x(x_val)
 
-    return (x_train, y_train), (x_val, y_val)
+    return (x_train, y_train, dec_targ_train), (x_val, y_val, dec_targ_val)
 
   def get_seq_length(self):
     return self.seq_len_train , self.seq_len_val
@@ -165,7 +176,7 @@ class Data():
     x   = [x_1,x_2]
     return x
 
-  def integerize(self, x, vocab, maxlen):
+  def integerize(self, x, vocab):
     """ Swap all tokens for their integer values based on vocab """
     x_new = []
     for sample in x:
@@ -173,11 +184,11 @@ class Data():
       x_new.append(tokens)
     return x_new
 
-  def pad_input(self, x, arg_len):
+  def pad_input(self, x, arg_len=None, split=False):
     x_new = []
     for i, sample in enumerate(x):
       # Pad end of individual arguments
-      if self.split_input:
+      if split:
         arg1_len = arg_len[i][0]
         arg2_len = arg_len[i][1]
         pad1     = self.max_arg_len - arg1_len
@@ -188,8 +199,8 @@ class Data():
 
       # Or pad only the end of the whole input
       else:
-        pad = maxlen - len(sample)
-        sample = sample.extend([pad_val]*pad)
+        pad = self.max_arg_len - len(sample)
+        sample.extend([self.pad_val]*pad)
         x_new.append(sample)
     return x_new
 
@@ -200,12 +211,19 @@ class Data():
       y : list of labels
       arg_len : list of tuples (arg1_length, arg2_length)
     """
-    x = list(); y = list(); arg_len=list();
+    x = list(); y = list(); arg_len=list(); decoder_targets=list();
     with codecs.open(path, encoding='utf8') as pdfile:
       for line in pdfile:
         j = json.loads(line)
         arg1 = clean_str(j['arg1'])[:self.max_arg_len]
-        arg2 = clean_str(j['arg2'])[:self.max_arg_len]
+        arg2 = clean_str(j['arg2'])
+        if self.bos_tag:
+          arg2.insert(0, self.bos_tag)
+        arg2 = arg2[:self.max_arg_len]
+        dec_target = arg2[1:]
+        dec_target.append(self.eos_tag)
+        decoder_targets.append(dec_target)
+
         l1 = len(arg1)
         l2 = len(arg2)
 
@@ -217,7 +235,15 @@ class Data():
         x.append(arg1)
         y.append(label)
         arg_len.append((l1,l2))
-    return x, y, arg_len
+    return x, y, arg_len, decoder_targets
+
+  def add_tags(self, seq_list):
+    """ Adds beginning and/or end of sequence tags if set """
+    if self.bos_tag:
+      seq_list.insert(0, self.bos_tag)
+    if self.eos_tag:
+      seq_list.append(self.eos_tag)
+    return seq_list
 
   def create_vocab(self, train_data, val_data):
     """ Create a dictionary of words to int, and the reverse
@@ -226,6 +252,7 @@ class Data():
     """
     words = [word for sublist in train_data for word in sublist]
     words.extend([word for sublist in val_data for word in sublist])
+    words.extend([self.eos_tag] * len(train_data)) # silly hack to add tag
     count = Counter(words) # word count
     # Vocab in descending order
     inv_vocab = [x[0] for x in count.most_common()]

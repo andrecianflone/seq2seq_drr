@@ -20,8 +20,9 @@ class BasicEncDec():
     self.enc_embedded = self.embedded(self.enc_input, self.embedding_tensor)
     self.enc_input_len = tf.placeholder(self.int_type, shape=[None,])
 
-    self.targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
-    self.dec_embedded = self.embedded(self.targets, self.embedding_tensor)
+    self.dec_targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
+    self.dec_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
+    self.dec_embedded = self.embedded(self.dec_input, self.embedding_tensor)
     self.dec_input_len = tf.placeholder(self.int_type, shape=[None,])
     # weight mask shape [batch_size x sequence_length]
     self.dec_weight_mask = tf.placeholder(self.float_type, shape=[None, max_seq_len])
@@ -40,7 +41,7 @@ class BasicEncDec():
                       self.dec_input_len, encoded_state)
     self.logits = self.out_logits(self.decoded_outputs, num_units, vocab_size)
     # \end{magic}
-    loss = self.get_loss(self.logits, self.targets, self.dec_weight_mask)
+    loss = self.get_loss(self.logits, self.dec_targets, self.dec_weight_mask)
     self.cost = tf.reduce_sum(loss)
     self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
 

@@ -23,13 +23,20 @@ max_time_steps = 100
 ###############################################################################
 # Data
 ###############################################################################
-conll_data = Data(max_arg_len=max_arg_len, maxlen=maxlen)
+conll_data = Data(
+            max_arg_len=max_arg_len,
+            maxlen=maxlen,
+            split_input=True,
+            bos_tag="<bos>",
+            eos_tag="<eos>")
+
 # X is a list of narrays: [arg1, arg2] , args are integers
 # y is a numpy array: [samples x classes]
-(X_train, classes_train), (X_test, classes_test) = conll_data.get_data()
+(X_train, classes_train, dec_train), (X_test, classes_test, dec_test) = \
+                                                          conll_data.get_data()
+# Encoder decoder inputs
 x_train_enc, x_train_dec = X_train[0], X_train[1]
-x_test_enc, x_test_dec = X_test[0], X_test[1]
-# TODO: Need decoder targets!! Target is decoder input offset by 1
+x_test_enc, x_test_dc = X_test[-1], X_test[1]
 
 # Sequence length as numpy array shape [samples x 2]
 seq_len_train, seq_len_val = conll_data.get_seq_length()
@@ -39,6 +46,7 @@ enc_len_train, dec_len_train = seq_len_train[:,0], seq_len_train[:,1]
 train_dec_mask = np.sign(X_train[1])
 test_dec_mask  = np.sign(X_test[1])
 
+# Word embeddings
 emb = Embeddings(conll_data.vocab, conll_data.inv_vocab)
 # embedding is a numpy array [vocab size x embedding dimension]
 embedding = emb.get_embedding_matrix(\
@@ -78,19 +86,22 @@ def make_batches(data, batch_size, shuffle=True):
 
 with tf.Session() as sess:
   tf.global_variables_initializer().run()
-  data = [x_train_enc, x_train_dec, enc_len_train, dec_len_train, train_dec_mask]
+  data = [x_train_enc, x_train_dec, enc_len_train, dec_len_train, dec_train,
+          train_dec_mask]
   for epoch in range(nb_epochs):
     t1 = datetime.now()
     batches = make_batches(data, batch_size,shuffle=True)
     for batch in batches:
       b_train_enc, b_train_dec = batch[0], batch[1]
       b_enc_len_train, b_dec_len_train = batch[2], batch[3]
-      b_train_dec_mask = batch[4]
+      b_dec_targets = batch[4]
+      b_train_dec_mask = batch[5]
       fetch = [model.optimizer, model.cost]
       feed = {
                model.enc_input       : b_train_enc,
                model.enc_input_len   : b_enc_len_train,
-               model.targets         : b_train_dec,
+               model.dec_targets     : b_dec_targets,
+               model.dec_input       : b_train_dec,
                model.dec_input_len   : b_dec_len_train,
                model.dec_weight_mask : b_train_dec_mask
              }
@@ -98,6 +109,6 @@ with tf.Session() as sess:
 
       diff_t = (datetime.now() - t1).total_seconds()
       print('epoch: {:2.0f} time: {:>4.1f} | loss: {:>3.4f} '.format(
-        epoch, diff_t, loss, end='\r'))
+        epoch, diff_t, loss), end='\r')
 
 
