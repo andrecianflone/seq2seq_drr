@@ -1,0 +1,30 @@
+
+class Progress():
+  """ Pretty print progress for neural net stuff """
+  def __init__(self, batches, progress_bar=True, bar_length=30):
+    self.progress_bar = progress_bar # boolean
+    self.bar_length = bar_length
+    self.t1 = datetime.now()
+    self.batches = batches
+    self.current_batch = 0
+    self.epoch = 0
+
+  def epoch_start(self):
+    self.t1 = datetime.now()
+    self.epoch += 1
+    self.current_batch = 0 # reset batch
+
+  def print_train(self, loss):
+    diff_t = (datetime.now() - self.t1).total_seconds()
+    print('epoch: {:2.0f} time: {:>4.1f} | loss: {:>3.4f} '.format(
+        self.epoch, diff_t, loss), end='')
+    self.print_bar()
+
+  def print_bar(self):
+    self.current_batch += 1
+    bars_full = int(self.current_batch/self.batches*self.bar_length)
+    bars_empty = self.bar_length - bars_full
+    print("| [{}{}] ".format(u"\u2586"*bars_full, '-'*bars_empty),end='\r')
+    if bars_full == self.bar_length:
+      print()
+

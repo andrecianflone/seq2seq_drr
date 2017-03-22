@@ -6,13 +6,12 @@ from helper import Data
 from embeddings import Embeddings
 import tensorflow as tf
 import numpy as np
-from sklearn.utils import shuffle as group_shuffle
 from enc_dec import BasicEncDec
-from datetime import datetime
+from utils import Progress, make_batches
 sk_seed = 0
 
 # Some hyperparams
-nb_epochs      = 2               # max training epochs
+nb_epochs      = 30               # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
@@ -65,33 +64,16 @@ model = BasicEncDec(\
         max_seq_len=max_arg_len,
         embedding=embedding)
 
-def make_batches(data, batch_size, shuffle=True):
-  """ Batches the passed data
-  Args:
-    data       : a list of numpy arrays
-    batch_size : int
-    shuffle    : should be true except when testing
-  Returns:
-    list of original numpy arrays but sliced
-  """
-  sk_seed = np.random.randint(0,10000)
-  if shuffle: data = group_shuffle(*data, random_state=sk_seed)
-  data_size = len(data[0])
-  batch_per_epoch = int(data_size/batch_size) + 1
-  for batch_num in range(batch_per_epoch):
-    start_index = batch_num * batch_size
-    end_index = min((batch_num + 1) * batch_size, data_size)
-    batch = []
-    for d in data:
-      batch.append(d[start_index:end_index])
-    yield batch
+batch_per_epoch = int(len(x_train_enc)/batch_size) + 1
 
+# TensorFlow session
 with tf.Session() as sess:
   tf.global_variables_initializer().run()
   data = [x_train_enc, x_train_dec, enc_len_train, dec_len_train, dec_train,
           train_dec_mask]
+  prog = Progress(batches=batch_per_epoch, progress_bar=True, bar_length=30)
   for epoch in range(nb_epochs):
-    t1 = datetime.now()
+    prog.epoch_start()
     batches = make_batches(data, batch_size,shuffle=True)
     for batch in batches:
       b_train_enc, b_train_dec = batch[0], batch[1]
@@ -108,9 +90,4 @@ with tf.Session() as sess:
                model.dec_weight_mask : b_train_dec_mask
              }
       _, loss = sess.run(fetch,feed)
-
-      diff_t = (datetime.now() - t1).total_seconds()
-      print('epoch: {:2.0f} time: {:>4.1f} | loss: {:>3.4f} '.format(
-        epoch, diff_t, loss), end='\r')
-
-
+      prog.print_train(loss)
