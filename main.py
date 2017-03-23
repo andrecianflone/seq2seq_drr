@@ -11,7 +11,7 @@ from utils import Progress, make_batches
 sk_seed = 0
 
 # Some hyperparams
-nb_epochs      = 30               # max training epochs
+nb_epochs      =  2              # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
@@ -62,28 +62,31 @@ embedding = emb.get_embedding_matrix(\
 model = BasicEncDec(\
         num_units=num_units,
         max_seq_len=max_arg_len,
-        embedding=embedding)
+        embedding=embedding,
+        num_classes=conll_data.num_classes)
 
 batch_per_epoch = int(len(x_train_enc)/batch_size) + 1
 
 # TensorFlow session
 with tf.Session() as sess:
   tf.global_variables_initializer().run()
-  data = [x_train_enc, x_train_dec, enc_len_train, dec_len_train, dec_train,
-          train_dec_mask]
+  data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
+          dec_len_train, dec_train,train_dec_mask]
   prog = Progress(batches=batch_per_epoch, progress_bar=True, bar_length=30)
   for epoch in range(nb_epochs):
     prog.epoch_start()
     batches = make_batches(data, batch_size,shuffle=True)
     for batch in batches:
       b_train_enc, b_train_dec = batch[0], batch[1]
-      b_enc_len_train, b_dec_len_train = batch[2], batch[3]
-      b_dec_targets = batch[4]
-      b_train_dec_mask = batch[5]
+      b_classes = batch[2]
+      b_enc_len_train, b_dec_len_train = batch[3], batch[4]
+      b_dec_targets = batch[5]
+      b_train_dec_mask = batch[6]
       fetch = [model.optimizer, model.cost]
       feed = {
                model.enc_input       : b_train_enc,
                model.enc_input_len   : b_enc_len_train,
+               model.classes         : b_classes,
                model.dec_targets     : b_dec_targets,
                model.dec_input       : b_train_dec,
                model.dec_input_len   : b_dec_len_train,
@@ -91,3 +94,5 @@ with tf.Session() as sess:
              }
       _, loss = sess.run(fetch,feed)
       prog.print_train(loss)
+
+

@@ -4,11 +4,14 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
-  def __init__(self, num_units, max_seq_len, embedding):
+  def __init__(self, num_units, max_seq_len, embedding, num_classes):
     self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32
     self.int_type = tf.int32
 
+    ############################
+    # Model inputs
+    ############################
     vocab_size = embedding.shape[0]
     # Embedding tensor is of shape [vocab_size x embedding_size]
     self.embedding_tensor = tf.get_variable(
@@ -16,10 +19,15 @@ class BasicEncDec():
                         initializer=tf.constant_initializer(embedding),
                         trainable=False)
 
+    # Encoder inputs
     self.enc_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
     self.enc_embedded = self.embedded(self.enc_input, self.embedding_tensor)
     self.enc_input_len = tf.placeholder(self.int_type, shape=[None,])
 
+    # Class label
+    self.classes = tf.placeholder(self.int_type, shape=[None, num_classes])
+
+    # Decoder inputs and targets
     self.dec_targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
     self.dec_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
     self.dec_embedded = self.embedded(self.dec_input, self.embedding_tensor)
@@ -29,16 +37,20 @@ class BasicEncDec():
 
     batch_size = tf.shape(self.enc_input)[0]
 
+    ############################
+    # Model
+    ############################
     cell = BasicLSTMCell(num_units, state_is_tuple=True)
     # cell = DropoutWrapper(cell, output_keep_prob=keep_prob)
     # should add second additional layer here
 
     init_state = cell.zero_state(batch_size, self.float_type)
     # \begin{magic}
-    encoded_state = self.encoder(cell, self.enc_embedded, self.enc_input_len,
+    self.encoded_state = self.encoder(cell, self.enc_embedded, self.enc_input_len,
                     init_state)
+    # self.encoded_state = self.add_classes_to_state(self.encoded_state, self.classes)
     self.decoded_outputs = self.decoder_train(cell, self.dec_embedded,
-                      self.dec_input_len, encoded_state)
+                      self.dec_input_len, self.encoded_state)
     self.logits = self.out_logits(self.decoded_outputs, num_units, vocab_size)
     # \end{magic}
     self.generator_loss = \
@@ -51,8 +63,8 @@ class BasicEncDec():
     word_ids correspond the proper row index of the embedding_tensor
 
     Args:
-      words_ids : array of [batch_size x sequence of word ids]
-      embedding_tensor : tensor from which to retrieve the embedding
+      words_ids: array of [batch_size x sequence of word ids]
+      embedding_tensor: tensor from which to retrieve the embedding
     Returns:
       tensor of shape [batch_size, sequence length, embedding size]
     """
@@ -63,11 +75,24 @@ class BasicEncDec():
 
   def encoder(self, cell, x, seq_len, init_state, scope="encoder"):
     """ Encodes input, returns last state"""
-    # Output is the outputs at all time steps, state is the last hidden state
+    # Output is the outputs at all time steps, state is the last state
     with tf.variable_scope(scope):
       output, state = tf.nn.dynamic_rnn(\
                   cell, x, sequence_length=seq_len, initial_state=init_state)
+    # state is a StateTuple class with properties StateTuple.c and StateTuple.h
     return state
+
+  def add_classes_to_state(self, state_tuple, classes):
+    """ Concatenate hidden state with class labels
+    Args:
+      encoded_state: An LSTMStateTuple with properties c and h
+      classes: one-hot encoded labels to be concatenated to StateTuple.h
+    """
+    # h is shape [batch_size, num_units]
+    classes = tf.cast(classes, self.float_type)
+    h_new = tf.concat([state_tuple.h, classes], 1) # concat along 1st axis
+    new_state_tuple = tf.contrib.rnn.LSTMStateTuple(state_tuple.c, h_new)
+    return new_state_tuple
 
   def decoder_train(self, cell, x, seq_len, encoder_state, scope="decoder"):
     """ Training decoder. Decoder initialized with passed state """
@@ -141,6 +166,15 @@ class BasicEncDec():
     """ In inference step, must predict one step at a time. Beam search? """
     pass
 
+  def perplexity(self):
+    """ Calculate the perplexity of a sequence:
+    \left(\prod_{i=1}^{N} \frac{1}{P(w_i|past)} \right)^{1/n}
+    that is, the total product of 1 over the probability of each word, and n
+    root of that total
+
+    For language model, lower perplexity means better model
+    """
+    pass
 
 ''' Things to think about
 
