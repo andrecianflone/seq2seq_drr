@@ -22,6 +22,7 @@ max_time_steps = 100
 ###############################################################################
 # Data
 ###############################################################################
+# TODO: data section is messy, needs some cleaning
 conll_data = Data(
             max_arg_len=max_arg_len,
             maxlen=maxlen,
@@ -54,8 +55,6 @@ embedding = emb.get_embedding_matrix(\
             save=True,
             load_saved=True)
 
-# TODO: For conditional enc/dec, concat embedding with y class
-
 ###############################################################################
 # Main stuff
 ###############################################################################
@@ -67,31 +66,57 @@ model = BasicEncDec(\
         emb_dim=embedding.shape[1])
 
 batch_per_epoch = int(len(x_train_enc)/batch_size) + 1
+prog = Progress(batches=batch_per_epoch, progress_bar=True, bar_length=30)
+
+def train_one_epoch():
+  prog.epoch_start()
+  data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
+          dec_len_train, dec_train,train_dec_mask]
+  batches = make_batches(data, batch_size,shuffle=True)
+  for batch in batches:
+    b_train_enc, b_train_dec = batch[0], batch[1]
+    b_classes = batch[2]
+    b_enc_len_train, b_dec_len_train = batch[3], batch[4]
+    b_dec_targets = batch[5]
+    b_train_dec_mask = batch[6]
+    fetch = [model.optimizer, model.cost]
+    feed = {
+             model.enc_input       : b_train_enc,
+             model.enc_input_len   : b_enc_len_train,
+             model.classes         : b_classes,
+             model.dec_targets     : b_dec_targets,
+             model.dec_input       : b_train_dec,
+             model.dec_input_len   : b_dec_len_train,
+             model.dec_weight_mask : b_train_dec_mask
+           }
+    _, loss = sess.run(fetch,feed)
+    prog.print_train(loss)
+
+def eval_test_set():
+  batches = make_batches(data, batch_size,shuffle=True)
+  for batch in batches:
+    b_train_enc, b_train_dec = batch[0], batch[1]
+    b_classes = batch[2]
+    b_enc_len_train, b_dec_len_train = batch[3], batch[4]
+    b_dec_targets = batch[5]
+    b_train_dec_mask = batch[6]
+    fetch = [model.optimizer, model.cost]
+    feed = {
+             model.enc_input       : b_train_enc,
+             model.enc_input_len   : b_enc_len_train,
+             model.classes         : b_classes,
+             model.dec_targets     : b_dec_targets,
+             model.dec_input       : b_train_dec,
+             model.dec_input_len   : b_dec_len_train,
+             model.dec_weight_mask : b_train_dec_mask
+           }
+    _, loss = sess.run(fetch,feed)
+    prog.print_train(loss)
 
 # TensorFlow session
 with tf.Session() as sess:
   tf.global_variables_initializer().run()
-  data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
-          dec_len_train, dec_train,train_dec_mask]
-  prog = Progress(batches=batch_per_epoch, progress_bar=True, bar_length=30)
   for epoch in range(nb_epochs):
-    prog.epoch_start()
-    batches = make_batches(data, batch_size,shuffle=True)
-    for batch in batches:
-      b_train_enc, b_train_dec = batch[0], batch[1]
-      b_classes = batch[2]
-      b_enc_len_train, b_dec_len_train = batch[3], batch[4]
-      b_dec_targets = batch[5]
-      b_train_dec_mask = batch[6]
-      fetch = [model.optimizer, model.cost]
-      feed = {
-               model.enc_input       : b_train_enc,
-               model.enc_input_len   : b_enc_len_train,
-               model.classes         : b_classes,
-               model.dec_targets     : b_dec_targets,
-               model.dec_input       : b_train_dec,
-               model.dec_input_len   : b_dec_len_train,
-               model.dec_weight_mask : b_train_dec_mask
-             }
-      _, loss = sess.run(fetch,feed)
-      prog.print_train(loss)
+    train_one_epoch()
+    eval_test_set()
+
