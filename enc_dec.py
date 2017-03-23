@@ -4,20 +4,22 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
-  def __init__(self, num_units, max_seq_len, embedding, num_classes):
+  def __init__(self, num_units, max_seq_len, embedding, num_classes, emb_dim):
     self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32
     self.int_type = tf.int32
+    self.final_emb_dim = emb_dim + num_classes
 
     ############################
     # Model inputs
     ############################
     vocab_size = embedding.shape[0]
     # Embedding tensor is of shape [vocab_size x embedding_size]
-    self.embedding_tensor = tf.get_variable(
-                        name="embedding", shape=embedding.shape,
-                        initializer=tf.constant_initializer(embedding),
-                        trainable=False)
+    self.embedding_tensor = embedding
+    # self.embedding_tensor = tf.get_variable(
+                        # name="embedding", shape=embedding.shape,
+                        # initializer=tf.constant_initializer(embedding),
+                        # trainable=False)
 
     # Encoder inputs
     self.enc_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
@@ -26,6 +28,8 @@ class BasicEncDec():
 
     # Class label
     self.classes = tf.placeholder(self.int_type, shape=[None, num_classes])
+    # Condition on Y ==> Embeddings + labels
+    self.enc_embedded = self.emb_add_class(self.enc_embedded, self.classes)
 
     # Decoder inputs and targets
     self.dec_targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
@@ -81,6 +85,23 @@ class BasicEncDec():
                   cell, x, sequence_length=seq_len, initial_state=init_state)
     # state is a StateTuple class with properties StateTuple.c and StateTuple.h
     return state
+
+  def emb_add_class(self, enc_embedded, classes):
+    """ Concatenate input and classes """
+
+    num_classes = tf.shape(classes)[1]
+    # final_emb_dim = tf.to_int32(tf.shape(enc_embedded)[2] + num_classes)
+    time_steps = tf.shape(enc_embedded)[1]
+    classes = tf.tile(classes, [1, time_steps]) # copy along axis=1 only
+    classes = tf.reshape(classes, [-1, time_steps, num_classes]) # match input
+    classes = tf.cast(classes, self.float_type)
+    concat = tf.concat([enc_embedded, classes], 2) # concat 3rd dimension
+
+    # Hardset the shape. This is hacky, but because of tf.reshape, it seems the 
+    # tensor loses it's shape property which causes problems with contrib.rnn
+    # wich infers the shape
+    concat.set_shape([None, None, self.final_emb_dim])
+    return concat
 
   def add_classes_to_state(self, state_tuple, classes):
     """ Concatenate hidden state with class labels

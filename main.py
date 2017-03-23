@@ -63,7 +63,8 @@ model = BasicEncDec(\
         num_units=num_units,
         max_seq_len=max_arg_len,
         embedding=embedding,
-        num_classes=conll_data.num_classes)
+        num_classes=conll_data.num_classes,
+        emb_dim=embedding.shape[1])
 
 batch_per_epoch = int(len(x_train_enc)/batch_size) + 1
 
@@ -94,5 +95,3 @@ with tf.Session() as sess:
              }
       _, loss = sess.run(fetch,feed)
       prog.print_train(loss)
-
-
