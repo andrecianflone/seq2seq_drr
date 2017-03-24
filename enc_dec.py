@@ -130,7 +130,7 @@ class BasicEncDec():
     # in sequence_length. May be shorter than *max*
     return outputs
 
-  def decoder_inference(self, scope="inference"):
+  def decoder_inference(self, embeddings, vocab_size, scope="inference"):
     """ Inference step decoding. Used to generate decoded text """
     with tf.variable_scope(scope):
       # TODO: check simple_decoder_fn_inference docs
@@ -138,12 +138,12 @@ class BasicEncDec():
       # Must specify a decoder function for inference
       dec_fn_inf = tf.contrib.seq2seq.simple_decoder_fn_inference(
           output_fn = self.output_logits;,
-          encoder_state = ;,
-          embeddings = ;,
-          start_of_sequence_id = ;,
-          end_of_sequence_id = ;,
+          encoder_state = ;, # encoded state to initialize decoder
+          embeddings = embeddings;, # embedding matrix
+          start_of_sequence_id = ;, # bos tag ID of embedding matrix
+          end_of_sequence_id = ;, # eos tag ID of embedding matrix
           maximum_length = ;,
-          num_decoder_symbols = ;,
+          num_decoder_symbols = vocab_size,
           dtype=tf.int32 = ;,
           name="decoder_inf_func")
 
