@@ -42,21 +42,20 @@ class BasicEncDec():
     batch_size = tf.shape(self.enc_input)[0]
 
     ############################
-    # Model
+    # Model (magic is here)
     ############################
     cell = BasicLSTMCell(num_units, state_is_tuple=True)
     # cell = DropoutWrapper(cell, output_keep_prob=keep_prob)
     # should add second additional layer here
 
     init_state = cell.zero_state(batch_size, self.float_type)
-    # \begin{magic}
-    self.encoded_state = self.encoder(cell, self.enc_embedded, self.enc_input_len,
-                    init_state)
+    self.encoded_state = self.encoder(cell, self.enc_embedded,
+                          self.enc_input_len, init_state)
     # self.encoded_state = self.add_classes_to_state(self.encoded_state, self.classes)
     self.decoded_outputs = self.decoder_train(cell, self.dec_embedded,
-                      self.dec_input_len, self.encoded_state)
-    self.logits = self.out_logits(self.decoded_outputs, num_units, vocab_size)
-    # \end{magic}
+                          self.dec_input_len, self.encoded_state)
+    self.logits = self.sequence_output_logits(
+                  self.decoded_outputs, num_units, vocab_size)
     self.generator_loss = \
             self.get_loss(self.logits, self.dec_targets, self.dec_weight_mask)
     self.cost = tf.reduce_sum(self.generator_loss)
@@ -97,9 +96,9 @@ class BasicEncDec():
     classes = tf.cast(classes, self.float_type)
     concat = tf.concat([enc_embedded, classes], 2) # concat 3rd dimension
 
-    # Hardset the shape. This is hacky, but because of tf.reshape, it seems the 
+    # Hardset the shape. This is hacky, but because of tf.reshape, it seems the
     # tensor loses it's shape property which causes problems with contrib.rnn
-    # wich infers the shape
+    # wich uses the shape property
     concat.set_shape([None, None, self.final_emb_dim])
     return concat
 
@@ -132,10 +131,21 @@ class BasicEncDec():
     return outputs
 
   def decoder_inference(self, scope="inference"):
-    """ Inference step decoding."""
+    """ Inference step decoding. Used to generate decoded text """
     with tf.variable_scope(scope):
+      # TODO: check simple_decoder_fn_inference docs
+
       # Must specify a decoder function for inference
-      dec_fn_inf = tf.contrib.seq2seq.simple_decoder_fn_inference()
+      dec_fn_inf = tf.contrib.seq2seq.simple_decoder_fn_inference(
+          output_fn = self.output_logits;,
+          encoder_state = ;,
+          embeddings = ;,
+          start_of_sequence_id = ;,
+          end_of_sequence_id = ;,
+          maximum_length = ;,
+          num_decoder_symbols = ;,
+          dtype=tf.int32 = ;,
+          name="decoder_inf_func")
 
       # At evevery timestep in below, a slice is fed to the decoder_fn
       # Inputs is none, the input is inferred solely from decoder_fn
@@ -145,25 +155,37 @@ class BasicEncDec():
               cell, dec_fn_train, inputs=None, sequence_length=None)
     return outputs
 
-  def out_logits(self, decoded_outputs, num_units, vocab_size):
-    """ Softmax over decoder timestep outputs states """
-
+  def sequence_output_logits(self, decoded_outputs, num_units, vocab_size):
+    """ Output projection over all timesteps
+    Returns:
+      logit tensor of shape [batch_size, timesteps, vocab_size]
+    """
     # We need to get the sequence length for *this* batch, this will not be
     # equal for each batch since the decoder is dynamic. Meaning length is
-    # equal to the longest sequence in batch, not the max
+    # equal to the longest sequence in the batch, not the max over data
     max_seq_len = tf.shape(decoded_outputs)[1]
 
+    # Reshape to rank 2 tensor so timestep is no longer a dimension
+    output = tf.reshape(decoded_outputs, [-1, num_units])
+
+    # Get the logits
+    logits = self.output_logits(output, num_units, vocab_size)
+
+    # Reshape back to the original tensor shape
+    logits = tf.reshape(logits, [-1, max_seq_len, vocab_size])
+    return logits
+
+  def output_logits(self, decoded_outputs, num_units, vocab_size):
+    """ Output projection function
+    To be used for single timestep in RNN decoder
+    """
     with tf.variable_scope("softmax"):
       w = tf.get_variable("weights", [num_units, vocab_size],
           dtype=self.float_type, initializer=glorot())
       b = tf.get_variable("biases", [vocab_size],
           dtype=self.float_type, initializer=tf.constant_initializer(0.0))
 
-      # We need to reshape so timestep is no longer a dimension of output
-      output = tf.reshape(decoded_outputs, [-1, num_units])
       logits = tf.matmul(output, w) + b
-      # Get back original shape
-      logits = tf.reshape(logits, [-1, max_seq_len, vocab_size])
     return logits
 
   def get_loss(self, logits, targets, weight_mask):
