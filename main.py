@@ -36,16 +36,17 @@ conll_data = Data(
                                                           conll_data.get_data()
 # Encoder decoder inputs
 x_train_enc, x_train_dec = X_train[0], X_train[1]
-x_test_enc, x_test_dc = X_test[-1], X_test[1]
+x_test_enc, x_test_dec = X_test[0], X_test[1]
 
 # Sequence length as numpy array shape [samples x 2]
-seq_len_train, seq_len_val = conll_data.get_seq_length()
+seq_len_train, seq_len_test = conll_data.get_seq_length()
 enc_len_train, dec_len_train = seq_len_train[:,0], seq_len_train[:,1]
+enc_len_test, dec_len_test = seq_len_test[:,0], seq_len_test[:,1]
 
 # Decoder loss masking
 # For mask to work, padding must be integer 0
-train_dec_mask = np.sign(X_train[1])
-test_dec_mask  = np.sign(X_test[1])
+dec_mask_train = np.sign(X_train[1])
+dec_mask_test  = np.sign(X_test[1])
 
 # Word embeddings
 emb = Embeddings(conll_data.vocab, conll_data.inv_vocab)
@@ -55,6 +56,8 @@ embedding = emb.get_embedding_matrix(\
             save=True,
             load_saved=True)
 
+num_batches_train = len(x_train_enc)//batch_size+(len(x_train_enc)%batch_size>0)
+num_batches_test = len(x_test_enc)//batch_size+(len(x_test_enc)%batch_size>0)
 ###############################################################################
 # Main stuff
 ###############################################################################
@@ -65,58 +68,75 @@ model = BasicEncDec(\
         num_classes=conll_data.num_classes,
         emb_dim=embedding.shape[1])
 
-batch_per_epoch = int(len(x_train_enc)/batch_size) + 1
-prog = Progress(batches=batch_per_epoch, progress_bar=True, bar_length=30)
+prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=30)
 
 def train_one_epoch():
-  prog.epoch_start()
   data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
-          dec_len_train, dec_train,train_dec_mask]
-  batches = make_batches(data, batch_size,shuffle=True)
+          dec_len_train, dec_train,dec_mask_train]
+  batches = make_batches(data, batch_size, num_batches_train, shuffle=True)
   for batch in batches:
-    b_train_enc, b_train_dec = batch[0], batch[1]
-    b_classes = batch[2]
-    b_enc_len_train, b_dec_len_train = batch[3], batch[4]
+    b_enc         = batch[0]
+    b_dec         = batch[1]
+    b_classes     = batch[2]
+    b_enc_len     = batch[3]
+    b_dec_len     = batch[4]
     b_dec_targets = batch[5]
-    b_train_dec_mask = batch[6]
+    b_dec_mask    = batch[6]
     fetch = [model.optimizer, model.cost]
     feed = {
-             model.enc_input       : b_train_enc,
-             model.enc_input_len   : b_enc_len_train,
+             model.enc_input       : b_enc,
+             model.enc_input_len   : b_enc_len,
              model.classes         : b_classes,
              model.dec_targets     : b_dec_targets,
-             model.dec_input       : b_train_dec,
-             model.dec_input_len   : b_dec_len_train,
-             model.dec_weight_mask : b_train_dec_mask
+             model.dec_input       : b_dec,
+             model.dec_input_len   : b_dec_len,
+             model.dec_weight_mask : b_dec_mask
            }
     _, loss = sess.run(fetch,feed)
     prog.print_train(loss)
 
 def eval_test_set():
-  batches = make_batches(data, batch_size,shuffle=True)
-  for batch in batches:
-    b_train_enc, b_train_dec = batch[0], batch[1]
-    b_classes = batch[2]
-    b_enc_len_train, b_dec_len_train = batch[3], batch[4]
+  data = [x_test_enc, x_test_dec, classes_test, enc_len_test,
+          dec_len_test, dec_test, dec_mask_test]
+  batches = make_batches(data, batch_size, num_batches_test, shuffle=True)
+  losses = np.zeros(num_batches_test) # to average the losses
+  batch_w = np.zeros(num_batches_test) # batch weight
+  for i, batch in enumerate(batches):
+    b_enc         = batch[0]
+    b_dec         = batch[1]
+    b_classes     = batch[2]
+    b_enc_len     = batch[3]
+    b_dec_len     = batch[4]
     b_dec_targets = batch[5]
-    b_train_dec_mask = batch[6]
-    fetch = [model.optimizer, model.cost]
+    b_dec_mask    = batch[6]
+    fetch = [model.cost]
     feed = {
-             model.enc_input       : b_train_enc,
-             model.enc_input_len   : b_enc_len_train,
+             model.enc_input       : b_enc,
+             model.enc_input_len   : b_enc_len,
              model.classes         : b_classes,
              model.dec_targets     : b_dec_targets,
-             model.dec_input       : b_train_dec,
-             model.dec_input_len   : b_dec_len_train,
-             model.dec_weight_mask : b_train_dec_mask
+             model.dec_input       : b_dec,
+             model.dec_input_len   : b_dec_len,
+             model.dec_weight_mask : b_dec_mask
            }
-    _, loss = sess.run(fetch,feed)
-    prog.print_train(loss)
+    loss = sess.run(fetch,feed)
+    loss = loss[0]
 
-# TensorFlow session
+    # Keep track of losses to average later
+    cur_b_size = b_enc.shape[0]
+    losses[i] = loss
+    batch_w[i] = cur_b_size / len(x_test_enc)
+
+  # Average across batches
+  av = np.average(losses, weights=batch_w)
+  prog.print_eval(av)
+
+# Launch training
 with tf.Session() as sess:
   tf.global_variables_initializer().run()
   for epoch in range(nb_epochs):
+    prog.epoch_start()
     train_one_epoch()
     eval_test_set()
+    prog.epoch_end()
 
