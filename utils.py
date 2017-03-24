@@ -8,6 +8,7 @@ class Progress():
     self.progress_bar = progress_bar # boolean
     self.bar_length = bar_length
     self.t1 = datetime.now()
+    self.train_start_time = self.t1
     self.batches = batches
     self.current_batch = 0
     self.epoch = 0
@@ -21,9 +22,11 @@ class Progress():
     print()
 
   def print_train(self, loss):
-    diff_t = (datetime.now() - self.t1).total_seconds()
-    print('epoch: {:2.0f} time: {:>4.1f} | loss: {:>3.4f} '.format(
-        self.epoch, diff_t, loss), end='')
+    t2 = datetime.now()
+    epoch_time = (t2 - self.t1).total_seconds()
+    total_time = (t2 - self.train_start_time).total_seconds()/60
+    print('epoch: {:2.0f} sec: {:>4.1f} | total min: {:>4.1f} | train loss: {:>3.4f} '.format(
+        self.epoch, epoch_time, total_time, loss), end='')
     self.print_bar()
 
   def print_eval(self, loss):
