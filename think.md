@@ -7,9 +7,10 @@ tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
 
 ## From TensorFlow dev conf
 [watch](https://www.youtube.com/watch?v=RIR_-Xlbp7s&list=PLOU2XLYxmsIKGc_NBoIhTn2Qhraji53cv&index=15)
-# RNN encoder via Fully Dynamic RNN
-# 8 layer LSTM with residual connections, each layer on separate GPU, hence
+
+8 layer LSTM with residual connections, each layer on separate GPU, hence
 the DeviceWrapper. Since you're stacking RNNs, you pass to MultiRNNCell
+
 cell = MultiRNNCell(
         [DeviceWrapper(ResidualWrapper(LSTMCell(num_units=512)),
             device='/gpu:%d' % i)
