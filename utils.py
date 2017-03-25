@@ -29,8 +29,11 @@ class Progress():
         self.epoch, epoch_time, total_time, loss), end='')
     self.print_bar()
 
-  def print_eval(self, loss):
-    print('| validation loss: {:>3.4f} '.format(loss), end='')
+  def print_dec_eval(self, loss):
+    print('| validation decoder loss: {:>3.4f} '.format(loss), end='')
+
+  def print_class_eval(self, acc):
+    print('| validation class acc: {:>3.4f} '.format(acc), end='')
 
   def print_bar(self):
     self.current_batch += 1
