@@ -1,4 +1,5 @@
 import tensorflow as tf
+
 from tensorflow.contrib.rnn import BasicLSTMCell
 from tensorflow.contrib.layers import xavier_initializer as glorot
 
@@ -39,7 +40,7 @@ class BasicEncDec():
     # weight mask shape [batch_size x sequence_length]
     self.dec_weight_mask = tf.placeholder(self.float_type, shape=[None, max_seq_len])
 
-    batch_size = tf.shape(self.enc_input)[0]
+    self.batch_size = tf.shape(self.enc_input)[0]
 
     ############################
     # Model (magic is here)
@@ -48,17 +49,17 @@ class BasicEncDec():
     # cell = DropoutWrapper(cell, output_keep_prob=keep_prob)
     # should add second additional layer here
 
-    init_state = cell.zero_state(batch_size, self.float_type)
+    init_state = cell.zero_state(self.batch_size, self.float_type)
     self.encoded_state = self.encoder(cell, self.enc_embedded,
                           self.enc_input_len, init_state)
-    # self.encoded_state = self.add_classes_to_state(self.encoded_state, self.classes)
     self.decoded_outputs = self.decoder_train(cell, self.dec_embedded,
                           self.dec_input_len, self.encoded_state)
     self.logits = self.sequence_output_logits(
                   self.decoded_outputs, num_units, vocab_size)
-    self.generator_loss = \
-            self.get_loss(self.logits, self.dec_targets, self.dec_weight_mask)
-    self.cost = tf.reduce_sum(self.generator_loss)
+    # generator loss per sample
+    self.generator_loss = self.get_loss(\
+                          self.logits, self.dec_targets, self.dec_weight_mask)
+    self.cost = tf.reduce_mean(self.generator_loss) # average across batch
     self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
 
   def embedded(self, word_ids, embedding_tensor, scope="embedding"):
@@ -130,21 +131,22 @@ class BasicEncDec():
     # in sequence_length. May be shorter than *max*
     return outputs
 
-  def decoder_inference(self, embeddings, vocab_size, scope="inference"):
+  def decoder_inference(self, cell, x, seq_len, encoder_state,bos_id, eos_id,
+      max_seq, vocab_size, scope="inference"):
     """ Inference step decoding. Used to generate decoded text """
     with tf.variable_scope(scope):
       # TODO: check simple_decoder_fn_inference docs
 
       # Must specify a decoder function for inference
       dec_fn_inf = tf.contrib.seq2seq.simple_decoder_fn_inference(
-          output_fn = self.output_logits;,
-          encoder_state = ;, # encoded state to initialize decoder
-          embeddings = embeddings;, # embedding matrix
-          start_of_sequence_id = ;, # bos tag ID of embedding matrix
-          end_of_sequence_id = ;, # eos tag ID of embedding matrix
-          maximum_length = ;,
+          output_fn = self.output_logits,
+          encoder_state = encodeR_state, # encoded state to initialize decoder
+          embeddings = self.embedding_tensor, # embedding matrix
+          start_of_sequence_id = bos_id, # bos tag ID of embedding matrix
+          end_of_sequence_id = eos_id, # eos tag ID of embedding matrix
+          maximum_length = max_seq,
           num_decoder_symbols = vocab_size,
-          dtype=tf.int32 = ;,
+          dtype=tf.int32,
           name="decoder_inf_func")
 
       # At evevery timestep in below, a slice is fed to the decoder_fn
@@ -185,7 +187,7 @@ class BasicEncDec():
       b = tf.get_variable("biases", [vocab_size],
           dtype=self.float_type, initializer=tf.constant_initializer(0.0))
 
-      logits = tf.matmul(output, w) + b
+      logits = tf.matmul(decoded_outputs, w) + b
     return logits
 
   def get_loss(self, logits, targets, weight_mask):
@@ -203,7 +205,9 @@ class BasicEncDec():
     # Slice time dimension to max_seq
     targets = tf.slice(targets, [0, 0], [-1, max_seq])
     weight_mask = tf.slice(weight_mask, [0,0], [-1, max_seq])
-    return tf.contrib.seq2seq.sequence_loss(logits, targets, weight_mask)
+    loss = tf.contrib.seq2seq.sequence_loss(logits, targets, weight_mask,
+            average_across_batch=False)
+    return loss
 
   def predict(self):
     """ In inference step, must predict one step at a time. Beam search? """
@@ -219,44 +223,3 @@ class BasicEncDec():
     """
     pass
 
-''' Things to think about
-
-################
-Encoders/Decoders
-################
-# Different encoders
-tf.nn.dynamic_rnn(
-tf.nn.bidirectional_dynamic_rnn(
-tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
-
--------------------------------
-# An idea from TensorFlow Dev conf
-# https://www.youtube.com/watch?v=RIR_-Xlbp7s&list=PLOU2XLYxmsIKGc_NBoIhTn2Qhraji53cv&index=15
-# RNN encoder via Fully Dynamic RNN
-# 8 layer LSTM with residual connections, each layer on separate GPU, hence
-the DeviceWrapper. Since you're stacking RNNs, you pass to MultiRNNCell
-cell = MultiRNNCell(
-        [DeviceWrapper(ResidualWrapper(LSTMCell(num_units=512)),
-            device='/gpu:%d' % i)
-        for i in range(8)])
-
-encoder_outputs, encoder_final_state = dynamic_rnn(
-        cell, inputs, sequence_length, parallel_iterations=32,
-        swap_memory=True)
--------------------------------
-
-################
-Training stuff
-################
-batching with dynamic padding:
-tf.train.batch(... dynamic_pad=True)
-
-or have similar length sequences grouped together:
-tf.contrib.training.bucket_by_sequence_length(... dynamic_pad=True)
-
-We can automatically trunc sequences for BPTT with a state saver
-tf.contrib.training.batch_sequences_with_states(...)
-
-# trainer? Pipeline?
-helper = TrainingHelper(decoder_inputs, sequence_length)
-'''
