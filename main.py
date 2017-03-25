@@ -11,7 +11,7 @@ from utils import Progress, make_batches
 sk_seed = 0
 
 # Some hyperparams
-nb_epochs      =  2              # max training epochs
+nb_epochs      = 30              # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
@@ -70,10 +70,10 @@ model = BasicEncDec(\
 
 prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=30)
 
-def train_one_epoch():
-  data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
-          dec_len_train, dec_train,dec_mask_train]
-  batches = make_batches(data, batch_size, num_batches_train, shuffle=True)
+def call_model(data, fetch, num_batches, shuffle):
+  """ Calls models and yields results per batch """
+  batches = make_batches(data, batch_size, num_batches, shuffle=shuffle)
+  results = []
   for batch in batches:
     b_enc         = batch[0]
     b_dec         = batch[1]
@@ -82,7 +82,6 @@ def train_one_epoch():
     b_dec_len     = batch[4]
     b_dec_targets = batch[5]
     b_dec_mask    = batch[6]
-    fetch = [model.optimizer, model.cost]
     feed = {
              model.enc_input       : b_enc,
              model.enc_input_len   : b_enc_len,
@@ -92,44 +91,66 @@ def train_one_epoch():
              model.dec_input_len   : b_dec_len,
              model.dec_weight_mask : b_dec_mask
            }
-    _, loss = sess.run(fetch,feed)
+    result = sess.run(fetch,feed)
+    # yield the results when training
+    yield result
+
+def train_one_epoch():
+  data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
+          dec_len_train, dec_train,dec_mask_train]
+  fetch = [model.optimizer, model.cost]
+  batch_results = call_model(data, fetch, num_batches_train, shuffle=True)
+  for result in batch_results:
+    loss = result[1]
     prog.print_train(loss)
 
-def eval_test_set():
+def test_set_decoder_loss():
+  """ Get the total loss for the entire batch """
   data = [x_test_enc, x_test_dec, classes_test, enc_len_test,
           dec_len_test, dec_test, dec_mask_test]
-  batches = make_batches(data, batch_size, num_batches_test, shuffle=True)
+  fetch = [model.batch_size, model.cost]
   losses = np.zeros(num_batches_test) # to average the losses
   batch_w = np.zeros(num_batches_test) # batch weight
-  for i, batch in enumerate(batches):
-    b_enc         = batch[0]
-    b_dec         = batch[1]
-    b_classes     = batch[2]
-    b_enc_len     = batch[3]
-    b_dec_len     = batch[4]
-    b_dec_targets = batch[5]
-    b_dec_mask    = batch[6]
-    fetch = [model.cost]
-    feed = {
-             model.enc_input       : b_enc,
-             model.enc_input_len   : b_enc_len,
-             model.classes         : b_classes,
-             model.dec_targets     : b_dec_targets,
-             model.dec_input       : b_dec,
-             model.dec_input_len   : b_dec_len,
-             model.dec_weight_mask : b_dec_mask
-           }
-    loss = sess.run(fetch,feed)
-    loss = loss[0]
-
+  batch_results = call_model(data, fetch, num_batches_test, shuffle=False)
+  for i, result in enumerate(batch_results):
     # Keep track of losses to average later
-    cur_b_size = b_enc.shape[0]
-    losses[i] = loss
+    cur_b_size = result[0]
+    losses[i] = result[1]
     batch_w[i] = cur_b_size / len(x_test_enc)
 
   # Average across batches
   av = np.average(losses, weights=batch_w)
-  prog.print_eval(av)
+  prog.print_dec_eval(av)
+
+def test_set_classification_loss():
+  """ Try all label conditioning for eval dataset
+  For each sample, get the perplexity when conditioning on all classes and set
+  the label with argmin. Check accuracy and f1 score of classification
+  """
+  # To average the losses
+  losses = np.zeros((len(classes_test), conll_data.num_classes), dtype=np.float32)
+  for k, v in conll_data.sense_to_one_hot.items():
+    class_id = np.argmax(v)
+    classes = np.array([v])
+    classes = np.repeat(classes, len(classes_test), axis=0)
+    assert classes_test.shape == classes.shape
+
+    data = [x_test_enc, x_test_dec, classes, enc_len_test,
+          dec_len_test, dec_test, dec_mask_test]
+    fetch = [model.batch_size, model.generator_loss]
+    batch_results = call_model(data, fetch, num_batches_test, shuffle=False)
+    j = 0
+    for result in batch_results:
+      cur_b_size = result[0]
+      loss = result[1]
+      losses[j:j+cur_b_size, class_id] = loss
+      j += cur_b_size
+
+  predictions = np.argmin(losses, axis=1) # get index of lowest loss
+  gold = np.argmax(classes_test, axis=1) # get index of one hot
+  correct = predictions == gold
+  accuracy = np.sum(correct)/len(correct)
+  prog.print_class_eval(accuracy)
 
 # Launch training
 with tf.Session() as sess:
@@ -137,6 +158,7 @@ with tf.Session() as sess:
   for epoch in range(nb_epochs):
     prog.epoch_start()
     train_one_epoch()
-    eval_test_set()
+    test_set_decoder_loss()
+    test_set_classification_loss()
     prog.epoch_end()
 
