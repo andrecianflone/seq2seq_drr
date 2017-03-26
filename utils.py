@@ -25,7 +25,7 @@ class Progress():
     t2 = datetime.now()
     epoch_time = (t2 - self.t1).total_seconds()
     total_time = (t2 - self.train_start_time).total_seconds()/60
-    print('epoch: {:2.0f} sec: {:>4.1f} | total min: {:>4.1f} | train loss: {:>3.4f} '.format(
+    print('epoch: {:2.0f} sec: {:>5.1f} | total min: {:>5.1f} | train loss: {:>3.4f} '.format(
         self.epoch, epoch_time, total_time, loss), end='')
     self.print_bar()
 
