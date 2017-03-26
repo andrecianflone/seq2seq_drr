@@ -36,6 +36,7 @@ class BasicEncDec():
     self.dec_targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
     self.dec_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
     self.dec_embedded = self.embedded(self.dec_input, self.embedding_tensor)
+    self.dec_embedded = self.emb_add_class(self.dec_embedded, self.classes)
     self.dec_input_len = tf.placeholder(self.int_type, shape=[None,])
     # weight mask shape [batch_size x sequence_length]
     self.dec_weight_mask = tf.placeholder(self.float_type, shape=[None, max_seq_len])
@@ -56,6 +57,7 @@ class BasicEncDec():
                           self.dec_input_len, self.encoded_state)
     self.logits = self.sequence_output_logits(
                   self.decoded_outputs, num_units, vocab_size)
+    self.softmax_logits = tf.nn.softmax(self.logits)
     # generator loss per sample
     self.generator_loss = self.get_loss(\
                           self.logits, self.dec_targets, self.dec_weight_mask)
