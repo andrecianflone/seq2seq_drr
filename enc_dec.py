@@ -47,9 +47,9 @@ class BasicEncDec():
     # Model (magic is here)
     ############################
     cell_enc_fw = GRUCell(num_units)
-    cell_enc_fw = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
+    cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
     cell_enc_bw = GRUCell(num_units)
-    cell_enc_bw = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
+    cell_enc_bw = DropoutWrapper(cell_enc_bw, output_keep_prob=self.keep_prob)
     # cell_enc = GRUCell(num_units)
     # cell_enc = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
 
@@ -57,8 +57,8 @@ class BasicEncDec():
     cell_dec = DropoutWrapper(cell_dec, output_keep_prob=self.keep_prob)
     # should add second additional layer here
 
-    attention_states, self.encoded_state = self.encoder_one_way(cell_enc, \
-                            self.enc_embedded, self.enc_input_len)
+    attention_states, self.encoded_state = self.encoder_bi(cell_enc_fw, \
+                            cell_enc_bw, self.enc_embedded, self.enc_input_len)
     # attention_states, self.encoded_state = self.encoder_one_way(cell_enc, \
                             # self.enc_embedded, self.enc_input_len)
     # self.decoded_outputs = self.decoder_train(cell_dec, self.dec_embedded,
@@ -121,7 +121,8 @@ class BasicEncDec():
                   inputs=x,
                   sequence_length=seq_len,
                   initial_state_fw=init_state_fw,
-                  initial_state_bw=init_state_bw)
+                  initial_state_bw=init_state_bw,
+                  dtype=self.float_type)
     return outputs, state
 
   def emb_add_class(self, enc_embedded, classes):

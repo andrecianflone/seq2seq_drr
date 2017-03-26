@@ -18,7 +18,7 @@ maxlen         = max_arg_len * 2 # max num of tokens per sample
 num_units      = 64              # hidden layer size
 num_layers     = 2               # try bidir?
 max_time_steps = 100
-keep_prob      = 0.5
+keep_prob      = 0.3
 
 ###############################################################################
 # Data
