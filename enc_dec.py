@@ -59,6 +59,7 @@ class BasicEncDec():
     # generator loss per sample
     self.generator_loss = self.get_loss(\
                           self.logits, self.dec_targets, self.dec_weight_mask)
+    self.prob = self.log_prob(self.logits, self.dec_targets)
     self.cost = tf.reduce_mean(self.generator_loss) # average across batch
     self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
 
@@ -199,6 +200,7 @@ class BasicEncDec():
       weigth_mask : valid logits should have weight "1" and padding "0",
         [batch_size, seq_len] of dtype float
     """
+    # TODO should not average_across_timesteps?
     # We need to delete zeroed elements in targets, beyond max sequence
     max_seq = tf.reduce_max(tf.reduce_sum(weight_mask, axis=1))
     max_seq = tf.to_int32(max_seq)
@@ -213,7 +215,7 @@ class BasicEncDec():
     """ In inference step, must predict one step at a time. Beam search? """
     pass
 
-  def perplexity(self):
+  def log_prob(self, logits, targets):
     """ Calculate the perplexity of a sequence:
     \left(\prod_{i=1}^{N} \frac{1}{P(w_i|past)} \right)^{1/n}
     that is, the total product of 1 over the probability of each word, and n
@@ -221,5 +223,11 @@ class BasicEncDec():
 
     For language model, lower perplexity means better model
     """
-    pass
+    # Probability of entire vocabulary over time
+    probs = tf.nn.softmax(logits)
+
+    # Get the model probability of only the targets
+    # Targets are the vocabulary index
+    # probs = tf.gather(probs, targets)
+    return probs
 
