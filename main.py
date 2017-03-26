@@ -154,9 +154,9 @@ def test_set_classification_loss():
       I,J=np.ix_(np.arange(probs.shape[0]),np.arange(probs.shape[1]))
       prob_vocab = probs[I,J,targets]
       # Get the sum log across all words per sample
-      sum_prob = np.sum(prob_vocab, axis=1) # [batch_size,]
+      sum_log_prob = np.sum(np.log(prob_vocab), axis=1) # [batch_size,]
       # Assign the sum log prob to the correct class column
-      log_prob[j:j+cur_b_size, class_id] = sum_prob
+      log_prob[j:j+cur_b_size, class_id] = sum_log_prob
       j += cur_b_size
 
   predictions = np.argmax(log_prob, axis=1) # get index of most probable
