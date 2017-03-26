@@ -11,11 +11,11 @@ from utils import Progress, make_batches
 sk_seed = 0
 
 # Some hyperparams
-nb_epochs      = 30              # max training epochs
+nb_epochs      = 50              # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
-num_units      = 4               # hidden layer size
+num_units      = 4              # hidden layer size
 num_layers     = 2               # try bidir?
 max_time_steps = 100
 
@@ -137,13 +137,20 @@ def test_set_classification_loss():
 
     data = [x_test_enc, x_test_dec, classes, enc_len_test,
           dec_len_test, dec_test, dec_mask_test]
-    fetch = [model.batch_size, model.generator_loss]
+    fetch = [model.batch_size, model.generator_loss, model.logits]
     batch_results = call_model(data, fetch, num_batches_test, shuffle=False)
     j = 0
     for result in batch_results:
       cur_b_size = result[0]
-      loss = result[1]
-      losses[j:j+cur_b_size, class_id] = loss
+      # loss = result[1]
+      # losses[j:j+cur_b_size, class_id] = loss
+
+      # Get the probability of the word we want
+      logits = batch_result[2] # [batch_size, time step, vocab_size]
+      probs = tf.nn.softmax(logits) # same shape
+
+      # Stupid loop because can't figure out multi-dim index
+
       j += cur_b_size
 
   predictions = np.argmin(losses, axis=1) # get index of lowest loss
@@ -159,6 +166,6 @@ with tf.Session() as sess:
     prog.epoch_start()
     train_one_epoch()
     test_set_decoder_loss()
-    test_set_classification_loss()
+    # test_set_classification_loss()
     prog.epoch_end()
 
