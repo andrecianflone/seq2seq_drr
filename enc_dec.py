@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from tensorflow.contrib.rnn import BasicLSTMCell, DropoutWrapper
+from tensorflow.contrib.rnn import GRUCell, BasicLSTMCell, DropoutWrapper
 from tensorflow.contrib.layers import xavier_initializer as glorot
 
 class BasicEncDec():
@@ -46,15 +46,25 @@ class BasicEncDec():
     ############################
     # Model (magic is here)
     ############################
-    cell = BasicLSTMCell(num_units, state_is_tuple=True)
-    cell = DropoutWrapper(cell, output_keep_prob=self.keep_prob)
+    cell_enc_fw = GRUCell(num_units)
+    cell_enc_fw = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
+    cell_enc_bw = GRUCell(num_units)
+    cell_enc_bw = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
+    # cell_enc = GRUCell(num_units)
+    # cell_enc = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
+
+    cell_dec = GRUCell(num_units)
+    cell_dec = DropoutWrapper(cell_dec, output_keep_prob=self.keep_prob)
     # should add second additional layer here
 
-    init_state = cell.zero_state(self.batch_size, self.float_type)
-    self.encoded_state = self.encoder(cell, self.enc_embedded,
-                          self.enc_input_len, init_state)
-    self.decoded_outputs = self.decoder_train(cell, self.dec_embedded,
-                          self.dec_input_len, self.encoded_state)
+    attention_states, self.encoded_state = self.encoder_one_way(cell_enc, \
+                            self.enc_embedded, self.enc_input_len)
+    # attention_states, self.encoded_state = self.encoder_one_way(cell_enc, \
+                            # self.enc_embedded, self.enc_input_len)
+    # self.decoded_outputs = self.decoder_train(cell_dec, self.dec_embedded,
+                          # self.dec_input_len, self.encoded_state)
+    self.decoded_outputs = self.decoder_train_attn(cell_dec, self.dec_embedded,
+                self.dec_input_len, self.encoded_state, attention_states, num_units)
     self.logits = self.sequence_output_logits(
                   self.decoded_outputs, num_units, vocab_size)
     self.softmax_logits = tf.nn.softmax(self.logits)
@@ -80,14 +90,39 @@ class BasicEncDec():
         inputs = tf.nn.embedding_lookup(embedding_tensor, word_ids)
     return inputs
 
-  def encoder(self, cell, x, seq_len, init_state, scope="encoder"):
-    """ Encodes input, returns last state"""
+  def encoder_one_way(self, cell, x, seq_len, init_state=None, scope="encoder"):
+    """ Dynamic encoder for one direction
+    Returns:
+      outputs: all sequence hidden states as Tensor of shape [batch,time,units]
+      state: last hidden state
+    """
     # Output is the outputs at all time steps, state is the last state
     with tf.variable_scope(scope):
-      output, state = tf.nn.dynamic_rnn(\
-                  cell, x, sequence_length=seq_len, initial_state=init_state)
+      outputs, state = tf.nn.dynamic_rnn(\
+                  cell, x, sequence_length=seq_len, initial_state=init_state,
+                  dtype=self.float_type)
     # state is a StateTuple class with properties StateTuple.c and StateTuple.h
-    return state
+    return outputs, state
+
+  def encoder_bi(self, cell_fw, cell_bw, x, seq_len, init_state_fw=None,
+                  init_state_bw=None, scope="encoder"):
+    """ Dynamic encoder for two directions
+    Returns:
+      outputs: a tuple(output_fw, output_bw), all sequence hidden states, each
+               as tensor of shape [batch,time,units]
+      state: tuple(output_state_fw, output_state_bw) containing the forward
+             and the backward final states of bidirectional rnlast hidden state
+    """
+    # Output is the outputs at all time steps, state is the last state
+    with tf.variable_scope(scope):
+      outputs, state = tf.nn.bidirectional_dynamic_rnn(\
+                  cell_fw=cell_fw,
+                  cell_bw=cell_bw,
+                  inputs=x,
+                  sequence_length=seq_len,
+                  initial_state_fw=init_state_fw,
+                  initial_state_bw=init_state_bw)
+    return outputs, state
 
   def emb_add_class(self, enc_embedded, classes):
     """ Concatenate input and classes """
@@ -119,7 +154,12 @@ class BasicEncDec():
     return new_state_tuple
 
   def decoder_train(self, cell, x, seq_len, encoder_state, scope="decoder"):
-    """ Training decoder. Decoder initialized with passed state """
+    """ Training decoder. Decoder initialized with passed state
+    Returns:
+      Tensor shaped [batch_size, max_time, cell.output_size] where max_time is
+      the longest sequence in THIS batch, meaning the longest
+      in sequence_length. May be shorter than *max*
+    """
     with tf.variable_scope(scope):
       # Must specify a decoder function for training
       dec_fn_train = tf.contrib.seq2seq.simple_decoder_fn_train(encoder_state)
@@ -129,9 +169,35 @@ class BasicEncDec():
               tf.contrib.seq2seq.dynamic_rnn_decoder(\
               cell, dec_fn_train, inputs=x, sequence_length=seq_len)
 
-    # Outputs will be Tensor shaped [batch_size, max_time, cell.output_size]
-    # Max_time is the longest sequence in THIS batch, meaning the longest
-    # in sequence_length. May be shorter than *max*
+    return outputs
+
+  def decoder_train_attn(self, cell, x, seq_len, encoder_state,
+                          attention_states, num_units):
+    """ Decode with attention
+    Args:
+      cell: an instance of RNNCell.
+      x: decoder inputs for training
+      attention_states: hidden states (from encoder) to attend over.
+      encoder_state: state to initialize decoder (use last state from encoder)
+      num_units: hidden state dimension
+    Returns:
+      Tensor shaped [batch_size, max_time, cell.output_size] where max_time is
+      the longest sequence in THIS batch, meaning the longest
+      in sequence_length. May be shorter than *max*
+    """
+    # Prepare Attention function
+    prep_attn = tf.contrib.seq2seq.prepare_attention(attention_states, \
+                attention_option="bahdanau", num_units=num_units)
+    attn_keys, attn_values, attn_score_fn, attn_cons_fn = prep_attn
+
+    # Attention decoder function
+    dec_fn_train = tf.contrib.seq2seq.attention_decoder_fn_train(encoder_state,
+                    attn_keys, attn_values, attn_score_fn, attn_cons_fn)
+
+    # Dynamic decoder function
+    outputs, final_state, final_context_state = \
+            tf.contrib.seq2seq.dynamic_rnn_decoder(\
+            cell, dec_fn_train, inputs=x, sequence_length=seq_len)
     return outputs
 
   def decoder_inference(self, cell, x, seq_len, encoder_state,bos_id, eos_id,
