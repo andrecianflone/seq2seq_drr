@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from tensorflow.contrib.rnn import BasicLSTMCell
+from tensorflow.contrib.rnn import BasicLSTMCell, DropoutWrapper
 from tensorflow.contrib.layers import xavier_initializer as glorot
 
 class BasicEncDec():
@@ -47,7 +47,7 @@ class BasicEncDec():
     # Model (magic is here)
     ############################
     cell = BasicLSTMCell(num_units, state_is_tuple=True)
-    # cell = DropoutWrapper(cell, output_keep_prob=keep_prob)
+    cell = DropoutWrapper(cell, output_keep_prob=self.keep_prob)
     # should add second additional layer here
 
     init_state = cell.zero_state(self.batch_size, self.float_type)

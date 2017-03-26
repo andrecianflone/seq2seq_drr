@@ -18,6 +18,7 @@ maxlen         = max_arg_len * 2 # max num of tokens per sample
 num_units      = 128              # hidden layer size
 num_layers     = 2               # try bidir?
 max_time_steps = 100
+keep_prob      = 0.5
 
 ###############################################################################
 # Data
@@ -70,7 +71,7 @@ model = BasicEncDec(\
 
 prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=30)
 
-def call_model(data, fetch, num_batches, shuffle):
+def call_model(data, fetch, num_batches, keep_prob, shuffle):
   """ Calls models and yields results per batch """
   batches = make_batches(data, batch_size, num_batches, shuffle=shuffle)
   results = []
@@ -89,7 +90,8 @@ def call_model(data, fetch, num_batches, shuffle):
              model.dec_targets     : b_dec_targets,
              model.dec_input       : b_dec,
              model.dec_input_len   : b_dec_len,
-             model.dec_weight_mask : b_dec_mask
+             model.dec_weight_mask : b_dec_mask,
+             model.keep_prob       : keep_prob
            }
     result = sess.run(fetch,feed)
     # yield the results when training
@@ -99,7 +101,7 @@ def train_one_epoch():
   data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
           dec_len_train, dec_train,dec_mask_train]
   fetch = [model.optimizer, model.cost]
-  batch_results = call_model(data, fetch, num_batches_train, shuffle=True)
+  batch_results = call_model(data, fetch, num_batches_train, keep_prob, shuffle=True)
   for result in batch_results:
     loss = result[1]
     prog.print_train(loss)
@@ -111,7 +113,7 @@ def test_set_decoder_loss():
   fetch = [model.batch_size, model.cost]
   losses = np.zeros(num_batches_test) # to average the losses
   batch_w = np.zeros(num_batches_test) # batch weight
-  batch_results = call_model(data, fetch, num_batches_test, shuffle=False)
+  batch_results = call_model(data, fetch, num_batches_test, keep_prob=1, shuffle=False)
   for i, result in enumerate(batch_results):
     # Keep track of losses to average later
     cur_b_size = result[0]
@@ -139,7 +141,7 @@ def test_set_classification_loss():
           dec_len_test, dec_test, dec_mask_test]
     fetch = [model.batch_size, model.generator_loss, model.softmax_logits,
               model.dec_targets]
-    batch_results = call_model(data, fetch, num_batches_test, shuffle=False)
+    batch_results = call_model(data, fetch, num_batches_test, keep_prob=1, shuffle=False)
     j = 0
     for result in batch_results:
       cur_b_size = result[0]
