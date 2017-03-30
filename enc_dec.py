@@ -172,8 +172,27 @@ class BasicEncDec():
 
     return outputs
 
-  def decoder_train_attn(self, cell, x, seq_len, encoder_state,
+  def decoder_train_attn(self):
+
+    attn_mech = BahdanauAttention(...)
+
+    attn_size = 10
+
+    attention_fn = AttentionWrapper(
+        cell = ..., # Instance of RNNCell
+        attention_mechanism = attn_mech, # Instance of AttentionMechanism
+        attention_size = attn_size, # Int, depth of attention (output) tensor
+        attention_history=False, # whether to store history in final output
+
+
+    # Perform dynamic decoding with decoder object
+    tf.contrib.seq2seq.dynamic_decode(
+        decoder = ... # A `Decoder` instance.
+        )
+
+  def decoder_train_attn_old(self, cell, x, seq_len, encoder_state,
                           attention_states, num_units):
+    """ This code is deprecated"""
     """ Decode with attention
     Args:
       cell: an instance of RNNCell.
