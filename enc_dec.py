@@ -173,6 +173,12 @@ class BasicEncDec():
     return outputs
 
   def decoder_train_attn(self):
+    """
+    Refactoring for new implementation of decoding in tf 1.1
+    see: https://www.tensorflow.org/versions/r1.1/api_guides/python/contrib.seq2seq#Attention
+
+    """
+    # TODO: update code to tf 1.1
 
     attn_mech = BahdanauAttention(...)
 
