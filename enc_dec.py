@@ -64,7 +64,9 @@ class BasicEncDec():
     # self.decoded_outputs = self.decoder_train(cell_dec, self.dec_embedded,
                           # self.dec_input_len, self.encoded_state)
     self.decoded_outputs = self.decoder_train_attn(cell_dec, self.dec_embedded,
-                self.dec_input_len, self.encoded_state, attention_states, num_units)
+                            self.enc_input_len, self.dec_input_len,
+                            self.encoded_state, attention_states,
+                            num_units, num_units)
     self.logits = self.sequence_output_logits(
                   self.decoded_outputs, num_units, vocab_size)
     self.softmax_logits = tf.nn.softmax(self.logits)
@@ -172,29 +174,55 @@ class BasicEncDec():
 
     return outputs
 
-  def decoder_train_attn(self):
+  def decoder_train_attn(self, cell, x, seq_len_enc, seq_len_dec,
+      encoder_state, attention_states, mem_units, attn_units):
     """
-    Refactoring for new implementation of decoding in tf 1.1
     see: https://www.tensorflow.org/versions/r1.1/api_guides/python/contrib.seq2seq#Attention
-
+    Args:
+      cell: an instance of RNNCell.
+      x: decoder inputs for training
+      seq_len_enc: seq. len. of encoder input, will ignore memories beyond seq len
+      seq_len_dec: seq. len. of decoder input
+      encoder_state: initial state for decoder
+      attention_states: hidden states (from encoder) to attend over.
+      mem_units: num of units in attention_states
+      attn_units: depth of attention (output) tensor
     """
-    # TODO: update code to tf 1.1
 
-    attn_mech = BahdanauAttention(...)
+    # Attention Mechanisms. Bahdanau is additive style attention
+    attn_mech = tf.contrib.seq2seq.BahdanauAttention(
+        num_units = mem_units, # depth of query mechanism
+        memory = attention_states, # hidden states to attend (output of RNN)
+        memory_sequence_length=seq_len_enc, # masks false memories
+        normalize=False, # normalize energy term
+        name='BahdanauAttention')
 
-    attn_size = 10
-
-    attention_fn = AttentionWrapper(
-        cell = ..., # Instance of RNNCell
+    # Attention Wrapper: adds the attention mechanism to the cell
+    attn_cell = tf.contrib.seq2seq.AttentionWrapper(
+        cell = cell,# Instance of RNNCell
         attention_mechanism = attn_mech, # Instance of AttentionMechanism
-        attention_size = attn_size, # Int, depth of attention (output) tensor
+        attention_size = attn_units, # Int, depth of attention (output) tensor
         attention_history=False, # whether to store history in final output
+        name="attention_wrapper")
 
+    # Helper is the sampling function for the decoder
+    # Check out other decoders:https://www.tensorflow.org/versions/r1.1/api_guides/python/contrib.seq2seq#Dynamic_Decoding
+    # TrainingHelper does no sampling, only uses inputs
+    helper = tf.contrib.seq2seq.TrainingHelper(
+        inputs = x, # decoder inputs
+        sequence_length = seq_len_dec, # decoder input length
+        name = "decoder_training_helper")
+
+    # Decoder setup
+    decoder = tf.contrib.seq2seq.BasicDecoder(
+              cell = attn_cell,
+              helper = helper, # A Helper instance
+              initial_state = encoder_state, # initial state of decoder
+              output_layer = None) # instance of tf.layers.Layer, like Dense
 
     # Perform dynamic decoding with decoder object
-    tf.contrib.seq2seq.dynamic_decode(
-        decoder = ... # A `Decoder` instance.
-        )
+    outputs, final_state = tf.contrib.seq2seq.dynamic_decode(decoder)
+    return outputs
 
   def decoder_train_attn_old(self, cell, x, seq_len, encoder_state,
                           attention_states, num_units):
