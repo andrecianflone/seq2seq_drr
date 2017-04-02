@@ -214,10 +214,18 @@ class BasicEncDec():
         name = "decoder_training_helper")
 
     # Decoder setup
+    # Clone initial state from encoder
+    batch_size = tf.shape(x)[0]
+    attn_zero = attn_cell.zero_state(batch_size=batch_size, dtype=self.float_type)
+    init_state = tf.contrib.seq2seq.AttentionWrapperState(\
+                cell_state=encoder_state,
+                attention=attn_zero,
+                time=0,
+                attention_history=())
     decoder = tf.contrib.seq2seq.BasicDecoder(
               cell = attn_cell,
               helper = helper, # A Helper instance
-              initial_state = encoder_state, # initial state of decoder
+              initial_state = init_state, # initial state of decoder
               output_layer = None) # instance of tf.layers.Layer, like Dense
 
     # Perform dynamic decoding with decoder object
