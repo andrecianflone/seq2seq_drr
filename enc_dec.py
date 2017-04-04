@@ -61,8 +61,8 @@ class BasicEncDec():
                             # cell_enc_bw, self.enc_embedded, self.enc_input_len)
     attention_states, self.encoded_state = self.encoder_one_way(cell_enc, \
                             self.enc_embedded, self.enc_input_len)
-    # self.decoded_outputs = self.decoder_train(cell_dec, self.dec_embedded,
-                          # self.dec_input_len, self.encoded_state)
+    # self.decoded_outputs = self.decoder_train_attn_old(cell_dec, self.dec_embedded,
+              # self.dec_input_len, self.encoded_state, attention_states, num_units)
     self.decoded_outputs = self.decoder_train_attn(cell_dec, self.dec_embedded,
                             self.enc_input_len, self.dec_input_len,
                             self.encoded_state, attention_states,
@@ -76,6 +76,13 @@ class BasicEncDec():
     self.prob = self.log_prob(self.logits, self.dec_targets)
     self.cost = tf.reduce_mean(self.generator_loss) # average across batch
     self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
+
+    # self.logits = 1
+    # self.softmax_logits = 1
+    # self.generator_loss = 1
+    # self.prob = 1
+    # self.cost = 1
+    # self.optimizer = 1
 
   def embedded(self, word_ids, embedding_tensor, scope="embedding"):
     """Swap ints for dense embeddings, on cpu.
@@ -205,32 +212,30 @@ class BasicEncDec():
         attention_history=False, # whether to store history in final output
         name="attention_wrapper")
 
-    # Helper is the sampling function for the decoder
-    # Check out other decoders:https://www.tensorflow.org/versions/r1.1/api_guides/python/contrib.seq2seq#Dynamic_Decoding
     # TrainingHelper does no sampling, only uses inputs
     helper = tf.contrib.seq2seq.TrainingHelper(
         inputs = x, # decoder inputs
         sequence_length = seq_len_dec, # decoder input length
         name = "decoder_training_helper")
 
-    # Decoder setup
-    # Clone initial state from encoder
+    # Initial state for decoder
+    # Clone attention state from current attention, but use encoder_state
     batch_size = tf.shape(x)[0]
-    attn_zero = attn_cell.zero_state(batch_size=batch_size, dtype=self.float_type)
-    init_state = tf.contrib.seq2seq.AttentionWrapperState(\
-                cell_state=encoder_state,
-                attention=attn_zero,
-                time=0,
-                attention_history=())
+    initial_state = attn_cell.zero_state(\
+                    batch_size=batch_size, dtype=self.float_type)
+    initial_state = initial_state.clone(cell_state = encoder_state)
+
+    # Decoder setup
     decoder = tf.contrib.seq2seq.BasicDecoder(
               cell = attn_cell,
               helper = helper, # A Helper instance
-              initial_state = init_state, # initial state of decoder
+              initial_state = initial_state, # initial state of decoder
               output_layer = None) # instance of tf.layers.Layer, like Dense
 
     # Perform dynamic decoding with decoder object
+    # Outputs is a BasicDecoder object with properties rnn_output and sample_id
     outputs, final_state = tf.contrib.seq2seq.dynamic_decode(decoder)
-    return outputs
+    return outputs.rnn_output
 
   def decoder_train_attn_old(self, cell, x, seq_len, encoder_state,
                           attention_states, num_units):
