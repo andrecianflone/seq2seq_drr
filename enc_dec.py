@@ -12,6 +12,7 @@ class BasicEncDec():
     self.int_type = tf.int32
     self.final_emb_dim = emb_dim + num_classes
     self.bi_encoder_hidden = num_units * 2
+    decoder_num_units = num_units *2
 
     ############################
     # Model inputs
@@ -51,7 +52,7 @@ class BasicEncDec():
     cell_enc = GRUCell(num_units)
     cell_enc = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
 
-    cell_dec = GRUCell(num_units)
+    cell_dec = GRUCell(decoder_num_units)
     cell_dec = DropoutWrapper(cell_dec, output_keep_prob=self.keep_prob)
     # should add second additional layer here
 
