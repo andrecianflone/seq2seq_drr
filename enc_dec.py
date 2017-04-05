@@ -5,11 +5,13 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
-  def __init__(self, num_units, max_seq_len, embedding, num_classes, emb_dim):
+  def __init__(self, num_units, dec_out_units, max_seq_len, embedding,
+      num_classes, emb_dim):
     self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32
     self.int_type = tf.int32
     self.final_emb_dim = emb_dim + num_classes
+    self.bi_encoder_hidden = num_units * 2
 
     ############################
     # Model inputs
@@ -17,10 +19,6 @@ class BasicEncDec():
     vocab_size = embedding.shape[0]
     # Embedding tensor is of shape [vocab_size x embedding_size]
     self.embedding_tensor = embedding
-    # self.embedding_tensor = tf.get_variable(
-                        # name="embedding", shape=embedding.shape,
-                        # initializer=tf.constant_initializer(embedding),
-                        # trainable=False)
 
     # Encoder inputs
     self.enc_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
@@ -46,10 +44,10 @@ class BasicEncDec():
     ############################
     # Model (magic is here)
     ############################
-    # cell_enc_fw = GRUCell(num_units)
-    # cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
-    # cell_enc_bw = GRUCell(num_units)
-    # cell_enc_bw = DropoutWrapper(cell_enc_bw, output_keep_prob=self.keep_prob)
+    cell_enc_fw = GRUCell(num_units)
+    cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
+    cell_enc_bw = GRUCell(num_units)
+    cell_enc_bw = DropoutWrapper(cell_enc_bw, output_keep_prob=self.keep_prob)
     cell_enc = GRUCell(num_units)
     cell_enc = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
 
@@ -57,32 +55,32 @@ class BasicEncDec():
     cell_dec = DropoutWrapper(cell_dec, output_keep_prob=self.keep_prob)
     # should add second additional layer here
 
-    # attention_states, self.encoded_state = self.encoder_bi(cell_enc_fw, \
-                            # cell_enc_bw, self.enc_embedded, self.enc_input_len)
-    attention_states, self.encoded_state = self.encoder_one_way(cell_enc, \
-                            self.enc_embedded, self.enc_input_len)
-    # self.decoded_outputs = self.decoder_train_attn_old(cell_dec, self.dec_embedded,
-              # self.dec_input_len, self.encoded_state, attention_states, num_units)
-    self.decoded_outputs = self.decoder_train_attn(cell_dec, self.dec_embedded,
-                            self.enc_input_len, self.dec_input_len,
-                            self.encoded_state, attention_states,
-                            num_units, num_units)
+    # Get data from encoder
+    self.encoded_outputs, self.encoded_state = self.encoder_bi(cell_enc_fw, \
+                            cell_enc_bw, self.enc_embedded, self.enc_input_len)
+    # Get data from encoder
+    # self.encoded_outputs, self.encoded_state = self.encoder_one_way(cell_enc, \
+                            # self.enc_embedded, self.enc_input_len)
+    # Get data from decoder
+    self.decoded_outputs = self.decoder_train_attn(
+                            cell=cell_dec,
+                            decoder_inputs=self.dec_embedded,
+                            seq_len_enc=self.enc_input_len,
+                            seq_len_dec=self.dec_input_len,
+                            encoder_state=self.encoded_state,
+                            attention_states=self.encoded_outputs,
+                            mem_units=self.bi_encoder_hidden,
+                            attn_units=dec_out_units)
+    # Outputs over vocab
     self.logits = self.sequence_output_logits(
-                  self.decoded_outputs, num_units, vocab_size)
+                  self.decoded_outputs, dec_out_units, vocab_size)
     self.softmax_logits = tf.nn.softmax(self.logits)
-    # generator loss per sample
+    # Generator loss per sample
     self.generator_loss = self.get_loss(\
                           self.logits, self.dec_targets, self.dec_weight_mask)
     self.prob = self.log_prob(self.logits, self.dec_targets)
     self.cost = tf.reduce_mean(self.generator_loss) # average across batch
     self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
-
-    # self.logits = 1
-    # self.softmax_logits = 1
-    # self.generator_loss = 1
-    # self.prob = 1
-    # self.cost = 1
-    # self.optimizer = 1
 
   def embedded(self, word_ids, embedding_tensor, scope="embedding"):
     """Swap ints for dense embeddings, on cpu.
@@ -132,6 +130,13 @@ class BasicEncDec():
                   initial_state_fw=init_state_fw,
                   initial_state_bw=init_state_bw,
                   dtype=self.float_type)
+      # outputs: a tuple(output_fw, output_bw), all sequence hidden states,
+      # each as tensor of shape [batch,time,units]
+      # Since we don't need the outputs separate, we concat here
+      outputs = tf.concat(outputs,2)
+      outputs.set_shape([None, None, self.bi_encoder_hidden])
+      state = tf.concat(state,1)
+      state.set_shape([None, self.bi_encoder_hidden])
     return outputs, state
 
   def emb_add_class(self, enc_embedded, classes):
@@ -181,7 +186,7 @@ class BasicEncDec():
 
     return outputs
 
-  def decoder_train_attn(self, cell, x, seq_len_enc, seq_len_dec,
+  def decoder_train_attn(self, cell, decoder_inputs, seq_len_enc, seq_len_dec,
       encoder_state, attention_states, mem_units, attn_units):
     """
     see: https://www.tensorflow.org/versions/r1.1/api_guides/python/contrib.seq2seq#Attention
@@ -214,13 +219,13 @@ class BasicEncDec():
 
     # TrainingHelper does no sampling, only uses inputs
     helper = tf.contrib.seq2seq.TrainingHelper(
-        inputs = x, # decoder inputs
+        inputs = decoder_inputs, # decoder inputs
         sequence_length = seq_len_dec, # decoder input length
         name = "decoder_training_helper")
 
     # Initial state for decoder
     # Clone attention state from current attention, but use encoder_state
-    batch_size = tf.shape(x)[0]
+    batch_size = tf.shape(decoder_inputs)[0]
     initial_state = attn_cell.zero_state(\
                     batch_size=batch_size, dtype=self.float_type)
     initial_state = initial_state.clone(cell_state = encoder_state)

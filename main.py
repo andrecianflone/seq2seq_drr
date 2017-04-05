@@ -15,10 +15,11 @@ nb_epochs      = 50              # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
-num_units      = 64              # hidden layer size
+cell_units     = 64             # hidden layer size
+dec_out_units  = 64
 num_layers     = 2               # try bidir?
 max_time_steps = 100
-keep_prob      = 0.3
+keep_prob      = 0.5
 
 ###############################################################################
 # Data
@@ -63,7 +64,8 @@ num_batches_test = len(x_test_enc)//batch_size+(len(x_test_enc)%batch_size>0)
 # Main stuff
 ###############################################################################
 model = BasicEncDec(\
-        num_units=num_units,
+        num_units=cell_units,
+        dec_out_units=dec_out_units,
         max_seq_len=max_arg_len,
         embedding=embedding,
         num_classes=conll_data.num_classes,
