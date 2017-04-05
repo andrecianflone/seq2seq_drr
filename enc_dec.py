@@ -56,14 +56,15 @@ class BasicEncDec():
     cell_dec = DropoutWrapper(cell_dec, output_keep_prob=self.keep_prob)
     # should add second additional layer here
 
-    # Get data from encoder
+    # Get data from encoder: bidirectional
     self.encoded_outputs, self.encoded_state = self.encoder_bi(cell_enc_fw, \
                             cell_enc_bw, self.enc_embedded, self.enc_input_len)
-    # Get data from encoder
+
+    # Get data from encoder: unidirectional
     # self.encoded_outputs, self.encoded_state = self.encoder_one_way(cell_enc, \
                             # self.enc_embedded, self.enc_input_len)
     # Get data from decoder
-    self.decoded_outputs = self.decoder_train_attn(
+    self.decoded_outputs, self.decoded_final_state = self.decoder_train_attn(
                             cell=cell_dec,
                             decoder_inputs=self.dec_embedded,
                             seq_len_enc=self.enc_input_len,
@@ -241,37 +242,7 @@ class BasicEncDec():
     # Perform dynamic decoding with decoder object
     # Outputs is a BasicDecoder object with properties rnn_output and sample_id
     outputs, final_state = tf.contrib.seq2seq.dynamic_decode(decoder)
-    return outputs.rnn_output
-
-  def decoder_train_attn_old(self, cell, x, seq_len, encoder_state,
-                          attention_states, num_units):
-    """ This code is deprecated"""
-    """ Decode with attention
-    Args:
-      cell: an instance of RNNCell.
-      x: decoder inputs for training
-      attention_states: hidden states (from encoder) to attend over.
-      encoder_state: state to initialize decoder (use last state from encoder)
-      num_units: hidden state dimension
-    Returns:
-      Tensor shaped [batch_size, max_time, cell.output_size] where max_time is
-      the longest sequence in THIS batch, meaning the longest
-      in sequence_length. May be shorter than *max*
-    """
-    # Prepare Attention function
-    prep_attn = tf.contrib.seq2seq.prepare_attention(attention_states, \
-                attention_option="bahdanau", num_units=num_units)
-    attn_keys, attn_values, attn_score_fn, attn_cons_fn = prep_attn
-
-    # Attention decoder function
-    dec_fn_train = tf.contrib.seq2seq.attention_decoder_fn_train(encoder_state,
-                    attn_keys, attn_values, attn_score_fn, attn_cons_fn)
-
-    # Dynamic decoder function
-    outputs, final_state, final_context_state = \
-            tf.contrib.seq2seq.dynamic_rnn_decoder(\
-            cell, dec_fn_train, inputs=x, sequence_length=seq_len)
-    return outputs
+    return outputs.rnn_output, final_state.rnn_output
 
   def decoder_inference(self, cell, x, seq_len, encoder_state,bos_id, eos_id,
       max_seq, vocab_size, scope="inference"):
