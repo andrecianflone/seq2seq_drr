@@ -11,15 +11,15 @@ from utils import Progress, make_batches
 sk_seed = 0
 
 # Some hyperparams
-nb_epochs      = 50              # max training epochs
+nb_epochs      = 20              # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
-cell_units     = 200             # hidden layer size
+cell_units     = 400             # hidden layer size
 dec_out_units  = 200
 num_layers     = 2               # try bidir?
 max_time_steps = 100
-keep_prob      = 0.5
+keep_prob      = 0.9
 
 ###############################################################################
 # Data
@@ -174,6 +174,6 @@ with tf.Session() as sess:
     prog.epoch_start()
     train_one_epoch()
     test_set_decoder_loss()
-    test_set_classification_loss()
+    # test_set_classification_loss()
     prog.epoch_end()
 
