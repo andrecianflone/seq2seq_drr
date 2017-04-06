@@ -201,6 +201,9 @@ class BasicEncDec():
       attention_states: hidden states (from encoder) to attend over.
       mem_units: num of units in attention_states
       attn_units: depth of attention (output) tensor
+    Returns:
+      outputs.rnn_output : decoder hidden states at all time steps
+      final_state.attention : last hidden state
     """
 
     # Attention Mechanisms. Bahdanau is additive style attention
@@ -242,7 +245,7 @@ class BasicEncDec():
     # Perform dynamic decoding with decoder object
     # Outputs is a BasicDecoder object with properties rnn_output and sample_id
     outputs, final_state = tf.contrib.seq2seq.dynamic_decode(decoder)
-    return outputs.rnn_output, final_state.rnn_output
+    return outputs.rnn_output, final_state.attention
 
   def decoder_inference(self, cell, x, seq_len, encoder_state,bos_id, eos_id,
       max_seq, vocab_size, scope="inference"):

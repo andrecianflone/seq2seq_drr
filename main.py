@@ -16,10 +16,10 @@ batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
 cell_units     = 400             # hidden layer size
-dec_out_units  = 200
+dec_out_units  = 64
 num_layers     = 2               # try bidir?
 max_time_steps = 100
-keep_prob      = 0.9
+keep_prob      = 0.3
 
 ###############################################################################
 # Data
