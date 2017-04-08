@@ -17,7 +17,7 @@ max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
 cell_units     = 64             # hidden layer size
 dec_out_units  = 32
-num_layers     = 2               # try bidir?
+num_layers     = 2
 max_time_steps = 100
 keep_prob      = 0.3
 
@@ -102,7 +102,7 @@ def call_model(data, fetch, num_batches, keep_prob, shuffle):
 def train_one_epoch():
   data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
           dec_len_train, dec_train,dec_mask_train]
-  fetch = [model.optimizer, model.cost]
+  fetch = [model.class_optimizer, model.class_cost]
   batch_results = call_model(data, fetch, num_batches_train, keep_prob, shuffle=True)
   for result in batch_results:
     loss = result[1]
@@ -112,7 +112,7 @@ def test_set_decoder_loss():
   """ Get the total loss for the entire batch """
   data = [x_test_enc, x_test_dec, classes_test, enc_len_test,
           dec_len_test, dec_test, dec_mask_test]
-  fetch = [model.batch_size, model.cost]
+  fetch = [model.batch_size, model.class_cost]
   losses = np.zeros(num_batches_test) # to average the losses
   batch_w = np.zeros(num_batches_test) # batch weight
   batch_results = call_model(data, fetch, num_batches_test, keep_prob=1, shuffle=False)

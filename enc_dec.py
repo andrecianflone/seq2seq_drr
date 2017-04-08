@@ -28,14 +28,15 @@ class BasicEncDec():
 
     # Class label
     self.classes = tf.placeholder(self.int_type, shape=[None, num_classes])
+
     # Condition on Y ==> Embeddings + labels
-    self.enc_embedded = self.emb_add_class(self.enc_embedded, self.classes)
+    # self.enc_embedded = self.emb_add_class(self.enc_embedded, self.classes)
 
     # Decoder inputs and targets
     self.dec_targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
     self.dec_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
     self.dec_embedded = self.embedded(self.dec_input, self.embedding_tensor)
-    self.dec_embedded = self.emb_add_class(self.dec_embedded, self.classes)
+    # self.dec_embedded = self.emb_add_class(self.dec_embedded, self.classes)
     self.dec_input_len = tf.placeholder(self.int_type, shape=[None,])
     # weight mask shape [batch_size x sequence_length]
     self.dec_weight_mask = tf.placeholder(self.float_type, shape=[None, max_seq_len])
@@ -73,16 +74,35 @@ class BasicEncDec():
                             attention_states=self.encoded_outputs,
                             mem_units=self.bi_encoder_hidden,
                             attn_units=dec_out_units)
-    # Outputs over vocab
-    self.logits = self.sequence_output_logits(
+
+
+    # CLASSIFICATION ##########
+    # Output for classification, use last decoder hidden state
+    self.class_logits = self.output_logits(
+        self.decoded_final_state, dec_out_units, num_classes, "class_softmax")
+
+    # Classification loss
+    self.class_loss = tf.nn.softmax_cross_entropy_with_logits(
+                      labels=self.classes,
+                      logits=self.class_logits)
+    self.class_cost = tf.reduce_mean(self.class_loss) # average across batch
+    self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
+
+    # TODO: add classification accuracy, f1 score
+    # TODO: try class loss across sequence, but classifier only uses last step
+    # in the sequence to label the argument.
+
+    # GENERATION ##############
+    # Outputs over vocab, for sequence
+    self.seq_logits = self.sequence_output_logits(
                   self.decoded_outputs, dec_out_units, vocab_size)
-    self.softmax_logits = tf.nn.softmax(self.logits)
+    self.seq_softmax_logits = tf.nn.softmax(self.seq_logits)
+
     # Generator loss per sample
-    self.generator_loss = self.get_loss(\
-                          self.logits, self.dec_targets, self.dec_weight_mask)
-    self.prob = self.log_prob(self.logits, self.dec_targets)
-    self.cost = tf.reduce_mean(self.generator_loss) # average across batch
-    self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
+    self.gen_loss = self.sequence_loss(\
+                        self.seq_logits, self.dec_targets, self.dec_weight_mask)
+    self.gen_cost = tf.reduce_mean(self.gen_loss) # average across batch
+    self.gen_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.gen_cost)
 
   def embedded(self, word_ids, embedding_tensor, scope="embedding"):
     """Swap ints for dense embeddings, on cpu.
@@ -287,17 +307,17 @@ class BasicEncDec():
     output = tf.reshape(decoded_outputs, [-1, num_units])
 
     # Get the logits
-    logits = self.output_logits(output, num_units, vocab_size)
+    logits = self.output_logits(output, num_units, vocab_size, "seq_softmax")
 
     # Reshape back to the original tensor shape
     logits = tf.reshape(logits, [-1, max_seq_len, vocab_size])
     return logits
 
-  def output_logits(self, decoded_outputs, num_units, vocab_size):
+  def output_logits(self, decoded_outputs, num_units, vocab_size, scope):
     """ Output projection function
     To be used for single timestep in RNN decoder
     """
-    with tf.variable_scope("softmax"):
+    with tf.variable_scope(scope):
       w = tf.get_variable("weights", [num_units, vocab_size],
           dtype=self.float_type, initializer=glorot())
       b = tf.get_variable("biases", [vocab_size],
@@ -306,7 +326,7 @@ class BasicEncDec():
       logits = tf.matmul(decoded_outputs, w) + b
     return logits
 
-  def get_loss(self, logits, targets, weight_mask):
+  def sequence_loss(self, logits, targets, weight_mask):
     """ Loss on sequence, given logits and one-hot targets
     Default loss below is softmax cross ent on logits
     Arguments:
