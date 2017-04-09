@@ -88,7 +88,7 @@ class BasicEncDec():
     self.class_cost = tf.reduce_mean(self.class_loss) # average across batch
     self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
 
-    # TODO: add classification accuracy, f1 score
+    self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
     # TODO: try class loss across sequence, but classifier only uses last step
     # in the sequence to label the argument.
 
@@ -346,9 +346,17 @@ class BasicEncDec():
             average_across_batch=False)
     return loss
 
-  def predict(self):
-    """ In inference step, must predict one step at a time. Beam search? """
-    pass
+  def predict(self, pred_logits, classes):
+    """ Returns class label (int) for prediction and gold
+    Args:
+      pred_logits : predicted logits, not yet softmax
+      classes : labels as one-hot vectors
+    """
+    y_pred = tf.nn.softmax(pred_logits)
+    y_pred = tf.argmax(pred)
+    y_true = tf.argmax(classes)
+
+    return pred, classes
 
   def log_prob(self, logits, targets):
     """ Calculate the perplexity of a sequence:
