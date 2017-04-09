@@ -8,16 +8,18 @@ import json
 import numpy as np
 
 class Embeddings():
-  def __init__(self, vocab, inverse_vocab):
+  def __init__(self, vocab, inverse_vocab, random_init_unknown):
     """
     Args:
       vocab         : dictionary of type {word_string : id_int}
       inverse_vocab : list of word_string where index corresponds to vocab id
+      random_init_unknown : if False, replaces all words not in embedding matrix
+        with <unk> keyword. Otherwise, random init a vector for each unknown
     """
     self.vocab = vocab
     self.inv_vocab = inverse_vocab
 
-  def get_embedding_matrix(self, model_path=None, save=False, load_saved=False):
+  def get_embedding_matrix(self, model_path=None,save=False, load_saved=False):
     """ Get the embedding from word2vec, needed for embedding layer. Words
     not found in the word2vec dictionary are randomly initialized
     Args:

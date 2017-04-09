@@ -15,10 +15,10 @@ class Data():
   def __init__(self,
         max_arg_len, # max length of each argument
         maxlen, # maximum total length of input
-        mapping_path='data/map_none.json',
+        mapping_path='data/map_proper_conll.json',
         split_input=True, # boolean, split input into separate numpy arrays
-        train_file = "data/train.json",
-        val_file = "data/dev.json",
+        train_file = "data/orig_train.json",
+        val_file = "data/orig_dev.json",
         decoder_targets=False, # second arg without bos
         bos_tag = None, # beginning of sequence tag
         eos_tag = None, # end of sequence tag
@@ -215,8 +215,8 @@ class Data():
     with codecs.open(path, encoding='utf8') as pdfile:
       for line in pdfile:
         j = json.loads(line)
-        arg1 = clean_str(j['arg1'])[:self.max_arg_len]
-        arg2 = clean_str(j['arg2'])
+        arg1 = clean_str(j['Arg1']['RawText'])[:self.max_arg_len]
+        arg2 = clean_str(j['Arg2']['RawText'])
         if self.bos_tag:
           arg2.insert(0, self.bos_tag)
         arg2 = arg2[:self.max_arg_len]
@@ -229,7 +229,7 @@ class Data():
 
         arg1.extend(arg2)
         # Return original sense, mapping done later
-        label = j['sense']
+        label = j['Sense'][0]
 
         # Add sample to list of data
         x.append(arg1)

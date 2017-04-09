@@ -52,7 +52,7 @@ dec_mask_train = np.sign(X_train[1])
 dec_mask_test  = np.sign(X_test[1])
 
 # Word embeddings
-emb = Embeddings(conll_data.vocab, conll_data.inv_vocab)
+emb = Embeddings(conll_data.vocab, conll_data.inv_vocab, random_init_unknown=True)
 # embedding is a numpy array [vocab size x embedding dimension]
 embedding = emb.get_embedding_matrix(\
             model_path='data/google_news_300.bin',
