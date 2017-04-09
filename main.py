@@ -5,14 +5,13 @@ Encoder Decoder type model for DRR
 from helper import Data
 from embeddings import Embeddings
 import tensorflow as tf
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, accuracy_score
 import numpy as np
 from enc_dec import BasicEncDec
 from utils import Progress, make_batches
-sk_seed = 0
 
 # Some hyperparams
-nb_epochs      = 20              # max training epochs
+nb_epochs      = 50              # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
@@ -21,6 +20,7 @@ dec_out_units  = 32
 num_layers     = 2
 max_time_steps = 100
 keep_prob      = 0.3
+early_stop     = 5 # stop after n epochs w/o improvement on val set
 
 ###############################################################################
 # Data
@@ -125,7 +125,7 @@ def test_set_decoder_loss():
 
   # Average across batches
   av = np.average(losses, weights=batch_w)
-  prog.print_dec_eval(av)
+  prog.print_eval('decoder loss', av)
 
 def classification_f1():
   """ Get the total loss for the entire batch """
@@ -145,8 +145,12 @@ def classification_f1():
     start_id += batch_size
 
   # Metrics
-  f1 = f1_score(y_true, y_pred, average='micro')
-  prog.print_dec_eval(f1)
+  f1_micro = f1_score(y_true, y_pred, average='micro')
+  prog.print_eval('micro f1', f1_micro)
+  f1_macro = f1_score(y_true, y_pred, average='macro')
+  prog.print_eval('macro f1', f1_macro)
+  acc = accuracy_score(y_true, y_pred)
+  prog.print_eval('acc', acc)
 
 def language_model_class_loss():
   """ Try all label conditioning for eval dataset
@@ -195,6 +199,7 @@ with tf.Session() as sess:
   for epoch in range(nb_epochs):
     prog.epoch_start()
     train_one_epoch()
+    prog.print_cust('|| validation ')
     classification_f1()
     # test_set_decoder_loss()
     # test_set_classification_loss()
