@@ -5,6 +5,7 @@ Encoder Decoder type model for DRR
 from helper import Data
 from embeddings import Embeddings
 import tensorflow as tf
+from sklearn.metrics import f1_score
 import numpy as np
 from enc_dec import BasicEncDec
 from utils import Progress, make_batches
@@ -126,7 +127,28 @@ def test_set_decoder_loss():
   av = np.average(losses, weights=batch_w)
   prog.print_dec_eval(av)
 
-def test_set_classification_loss():
+def classification_f1():
+  """ Get the total loss for the entire batch """
+  data = [x_test_enc, x_test_dec, classes_test, enc_len_test,
+          dec_len_test, dec_test, dec_mask_test]
+  fetch = [model.batch_size, model.class_cost, model.y_pred, model.y_true]
+  y_pred = np.zeros(len(x_test_enc))
+  y_true = np.zeros(len(x_test_enc))
+  batch_results = call_model(data, fetch, num_batches_test, keep_prob=1, shuffle=False)
+  start_id = 0
+  for i, result in enumerate(batch_results):
+    # Keep track of losses to average later
+    batch_size                           = result[0]
+    cost                                 = result[1]
+    y_pred[start_id:start_id+batch_size] = result[2]
+    y_true[start_id:start_id+batch_size] = result[3]
+    start_id += batch_size
+
+  # Metrics
+  f1 = f1_score(y_true, y_pred, average='micro')
+  prog.print_dec_eval(f1)
+
+def language_model_class_loss():
   """ Try all label conditioning for eval dataset
   For each sample, get the perplexity when conditioning on all classes and set
   the label with argmin. Check accuracy and f1 score of classification
@@ -173,7 +195,8 @@ with tf.Session() as sess:
   for epoch in range(nb_epochs):
     prog.epoch_start()
     train_one_epoch()
-    test_set_decoder_loss()
+    classification_f1()
+    # test_set_decoder_loss()
     # test_set_classification_loss()
     prog.epoch_end()
 

@@ -353,10 +353,10 @@ class BasicEncDec():
       classes : labels as one-hot vectors
     """
     y_pred = tf.nn.softmax(pred_logits)
-    y_pred = tf.argmax(pred)
-    y_true = tf.argmax(classes)
+    y_pred = tf.argmax(y_pred, axis=1)
+    y_true = tf.argmax(classes, axis=1)
 
-    return pred, classes
+    return y_pred, y_true
 
   def log_prob(self, logits, targets):
     """ Calculate the perplexity of a sequence:
