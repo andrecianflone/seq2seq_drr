@@ -9,6 +9,7 @@ from sklearn.metrics import f1_score, accuracy_score
 import numpy as np
 from enc_dec import BasicEncDec
 from utils import Progress, make_batches
+import sys
 
 # Some hyperparams
 nb_epochs      = 50              # max training epochs
@@ -137,7 +138,6 @@ def classification_f1():
   batch_results = call_model(data, fetch, num_batches_test, keep_prob=1, shuffle=False)
   start_id = 0
   for i, result in enumerate(batch_results):
-    # Keep track of losses to average later
     batch_size                           = result[0]
     cost                                 = result[1]
     y_pred[start_id:start_id+batch_size] = result[2]
@@ -151,6 +151,8 @@ def classification_f1():
   prog.print_eval('macro f1', f1_macro)
   acc = accuracy_score(y_true, y_pred)
   prog.print_eval('acc', acc)
+
+  conll_data.conll_f1_score(y_pred)
 
 def language_model_class_loss():
   """ Try all label conditioning for eval dataset
@@ -196,9 +198,10 @@ def language_model_class_loss():
 # Launch training
 with tf.Session() as sess:
   tf.global_variables_initializer().run()
+  nb_epochs = 1
   for epoch in range(nb_epochs):
     prog.epoch_start()
-    train_one_epoch()
+    # train_one_epoch()
     prog.print_cust('|| validation ')
     classification_f1()
     # test_set_decoder_loss()
