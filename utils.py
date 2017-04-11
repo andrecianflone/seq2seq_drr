@@ -25,7 +25,7 @@ class Progress():
     t2 = datetime.now()
     epoch_time = (t2 - self.t1).total_seconds()
     total_time = (t2 - self.train_start_time).total_seconds()/60
-    print('{:2.0f} sec: {:>5.1f} | total min: {:>5.1f} | train loss: {:>3.4f} '.format(
+    print('{:2.0f}: sec: {:>5.1f} | total min: {:>5.1f} | train loss: {:>3.4f} '.format(
         self.epoch, epoch_time, total_time, loss), end='')
     self.print_bar()
 
@@ -64,3 +64,104 @@ def make_batches(data, batch_size, num_batches,shuffle=True):
     yield batch
 
 
+class Metrics():
+  """ Keeps score of metrics during training """
+  def __init__(self):
+    self.current_epoch = 0
+
+    # Metrics updated at each epoch
+    self._f1_micro = 0
+    self._accuracy = 0
+    self._f1 = 0
+
+    # Updated when best
+    self._f1_micro_best = 0
+    self._accuracy_best = 0
+    self._f1_best = 0
+    self._f1_best_epoch = 0
+
+  # F1 micro
+  @property
+  def f1_micro(self):
+    """ Micro F1 score """
+    return self._f1_micro
+
+  @f1_micro.setter
+  def f1_micro(self, value):
+    self._f1_micro = value
+    if self._f1_micro >= self._f1_micro_best:
+      self._f1_micro_best = self._f1_micro
+
+  @property
+  def f1_micro_best(self):
+    """ Best F1 score so far """
+    return self._f1_micro_best
+
+  # Accuracy
+  @property
+  def accuracy(self):
+    """ Accuracy score """
+    return self._accuracy
+
+  @accuracy.setter
+  def accuracy(self, value):
+    self._accuracy = value
+    if self._accuracy >= self._accuracy_best:
+      self._accuracy_best = self._accuracy
+
+  @property
+  def accuracy_best(self):
+    """ Best accuracy score so far """
+    return self._accuracy_best
+
+  # F1
+  @property
+  def f1(self):
+    """ f1 score """
+    return self._f1
+
+  @f1.setter
+  def f1(self, value):
+    self._f1 = value
+    self.current_epoch += 1
+    if self._f1 >= self._f1_best:
+      self._f1_best = self._f1
+      self._f1_best_epoch = self.current_epoch
+
+  @property
+  def f1_best(self):
+    """ Best f1 score so far """
+    return self._f1_best
+
+  @property
+  def f1_best_epoch(self):
+    """ Epoch which achieved best F1 """
+    return self._f1_best_epoch
+
+class Callback():
+  """ Monitor training """
+  def __init__(self, early_stop_epoch, metrics, prog_bar):
+    """
+    Args:
+      early_stop_epoch : stop if not improved for these epochs
+      metrics: a Metrics object with f1 property updated during training
+    """
+    self.metrics = metrics
+    self.early_stop_epoch = early_stop_epoch
+    self.stop_count = 0
+    self.prog = prog_bar
+
+  def early_stop(self):
+    """ Check if f1 is decreasing """
+    if self.metrics.f1 < self.metrics.f1_best:
+      self.stop_count += 1
+    else:
+      self.stop_count = 0
+
+    if self.stop_count >= self.early_stop_epoch:
+      msg = "\nEarly stopping. Best f1 {} at epoch {}".format(\
+            self.metrics.f1_best, self.metrics.f1_best_epoch)
+      self.prog.print_cust(msg)
+      return True
+    else:
+      return False
