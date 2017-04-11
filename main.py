@@ -201,7 +201,7 @@ with tf.Session() as sess:
   nb_epochs = 1
   for epoch in range(nb_epochs):
     prog.epoch_start()
-    # train_one_epoch()
+    train_one_epoch()
     prog.print_cust('|| validation ')
     classification_f1()
     # test_set_decoder_loss()
