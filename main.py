@@ -8,19 +8,18 @@ import tensorflow as tf
 from sklearn.metrics import f1_score, accuracy_score
 import numpy as np
 from enc_dec import BasicEncDec
-from utils import Progress, make_batches
+from utils import Progress, make_batches, Metrics, Callback
 import sys
 
 # Some hyperparams
-nb_epochs      = 50              # max training epochs
+nb_epochs      = 70              # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
-cell_units     = 64             # hidden layer size
+cell_units     = 64         # hidden layer size
 dec_out_units  = 32
 num_layers     = 2
-max_time_steps = 100
-keep_prob      = 0.5
+keep_prob      = 0.3
 early_stop_epoch = 10 # stop after n epochs w/o improvement on val set
 
 ###############################################################################
@@ -74,11 +73,6 @@ model = BasicEncDec(\
         emb_dim=embedding.shape[1])
 
 prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=30)
-
-# Variables monitored during training
-glbl_f1_micro = 0
-glbl_acc = 0
-glbl_f1_conll = 0
 
 def call_model(data, fetch, num_batches, keep_prob, shuffle):
   """ Calls models and yields results per batch """
@@ -150,12 +144,13 @@ def classification_f1():
     start_id += batch_size
 
   # Metrics
-  glbl_f1_micro = f1_score(y_true, y_pred, average='micro')
-  prog.print_eval('micro_f1', glbl_f1_micro)
-  glbl_acc = accuracy_score(y_true, y_pred)
-  prog.print_eval('acc', glbl_acc)
-  glbl_f1_conll = conll_data.conll_f1_score(y_pred)
-  prog.print_eval('con_f1', glbl_f1_conll)
+  f1_micro = f1_score(y_true, y_pred, average='micro')
+  prog.print_eval('micro_f1', f1_micro)
+  acc = accuracy_score(y_true, y_pred)
+  prog.print_eval('acc', acc)
+  f1_conll = conll_data.conll_f1_score(y_pred)
+  prog.print_eval('con_f1', f1_conll)
+  return f1_micro, f1_conll, acc
 
 def language_model_class_loss():
   """ Try all label conditioning for eval dataset
@@ -198,36 +193,18 @@ def language_model_class_loss():
   accuracy = np.sum(correct)/len(correct)
   prog.print_class_eval(accuracy)
 
-class Callback():
-  def __init__(self, early_stop_epoch):
-    self.early_stop_epoch = early_stop_epoch
-    self.last_best_f1 = glbl_f1_conll
-    self.stop_count = 0
-
-  def early_stop(self):
-    if glbl_f1_conll <= self.last_best_f1:
-      self.stop_count += 1
-    else:
-      self.last_best_f1 = glbl_f1_conll
-      self.stop_count = 0
-
-    if self.stop_count >= self.early_stop_epoch:
-      return True
-    else:
-      return False
-
 # Launch training
-cb = Callback(early_stop_epoch)
+met = Metrics()
+cb = Callback(early_stop_epoch, met, prog)
 with tf.Session() as sess:
   tf.global_variables_initializer().run()
   for epoch in range(nb_epochs):
     prog.epoch_start()
     train_one_epoch()
     prog.print_cust('|| val ')
-    classification_f1()
+    met.f1_micro, met.f1, met.accuracy = classification_f1()
     # test_set_decoder_loss()
     # test_set_classification_loss()
-    prog.epoch_end()
     if cb.early_stop() == True: break
-
-
+    prog.epoch_end()
+  prog.epoch_end()
