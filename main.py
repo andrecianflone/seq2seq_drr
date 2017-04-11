@@ -147,12 +147,10 @@ def classification_f1():
   # Metrics
   f1_micro = f1_score(y_true, y_pred, average='micro')
   prog.print_eval('micro f1', f1_micro)
-  f1_macro = f1_score(y_true, y_pred, average='macro')
-  prog.print_eval('macro f1', f1_macro)
   acc = accuracy_score(y_true, y_pred)
   prog.print_eval('acc', acc)
-
-  conll_data.conll_f1_score(y_pred)
+  f1_conll = conll_data.conll_f1_score(y_pred)
+  prog.print_eval('con f1', f1_conll)
 
 def language_model_class_loss():
   """ Try all label conditioning for eval dataset
@@ -198,7 +196,6 @@ def language_model_class_loss():
 # Launch training
 with tf.Session() as sess:
   tf.global_variables_initializer().run()
-  nb_epochs = 1
   for epoch in range(nb_epochs):
     prog.epoch_start()
     train_one_epoch()

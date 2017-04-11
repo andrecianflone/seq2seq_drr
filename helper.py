@@ -6,6 +6,7 @@ import codecs
 from pprint import pprint
 import random
 import os.path
+from conll_utils.scorer import f1_non_explicit
 
 dtype='int32' # default numpy int dtype
 
@@ -273,7 +274,9 @@ class Data():
     return vocab, inv_vocab
 
   def conll_f1_score(self, predictions):
-    self.save_to_conll_format('tmp_val.json', predictions, self.val_disc_list)
+    self.save_to_conll_format('tmp.json', predictions, self.val_disc_list)
+    precision, recall, f1 = f1_non_explicit('tmp.json', 'data/dev.json')
+    return f1
 
   def save_to_conll_format(self, path, predictions, discourse, append_file=False):
     """ Saves as json in conll format
@@ -305,7 +308,7 @@ class Data():
         disc['Sense'] = [self.int_to_sense[sense_id]]
         json.dump(disc, pdtb) #indent to add to new line
         pdtb.write('\n')
-    print("\nSaved results as CoNLL json to here: ", path)
+    # print("\nSaved results as CoNLL json to here: ", path)
 
 def clean_str(string):
   """
