@@ -17,8 +17,8 @@ class Data():
         maxlen, # maximum total length of input
         mapping_path='data/map_proper_conll.json',
         split_input=True, # boolean, split input into separate numpy arrays
-        train_file = "data/orig_train.json",
-        val_file = "data/orig_dev.json",
+        train_file = "data/train.json",
+        val_file = "data/dev.json",
         decoder_targets=False, # second arg without bos
         bos_tag = None, # beginning of sequence tag
         eos_tag = None, # end of sequence tag
@@ -39,6 +39,7 @@ class Data():
     # Sense mapping dict, or list of dicts
     self.mapping_sense    = self.get_output_mapping(mapping_path)
     self.sense_to_one_hot = self.get_one_hot_dicts(self.mapping_sense)
+    self.int_to_sense     = self.get_int_to_sense_dict(self.sense_to_one_hot)
     self.num_classes      = self.get_class_counts(self.mapping_sense)
     # array shape [samples, 1], or [samples,2] if split
 
@@ -51,8 +52,9 @@ class Data():
     # Load data as lists of tokens
     x_train, y_train, seq_len_train, dec_targ_train= \
         self.load_from_file(self.train_file, self.max_arg_len)
+    self.val_disc_list = []
     x_val, y_val, seq_len_val, dec_targ_val= \
-        self.load_from_file(self.val_file, self.max_arg_len)
+        self.load_from_file(self.val_file, self.max_arg_len, self.val_disc_list)
 
     # Array with elements arg1 length, arg2 length
     self.seq_len_train = np.array(seq_len_train, dtype=dtype)
@@ -153,6 +155,14 @@ class Data():
     else:
       return self.one_hot_dict(set(mapping_sense.values()))
 
+  def get_int_to_sense_dict(self, sense_to_one_hot):
+    """ Return dict mapping integer to label based on one hot dict"""
+    int_to_sense = {}
+    for k, v in sense_to_one_hot.items():
+      key = np.argmax(v)
+      int_to_sense[key] = k
+    return int_to_sense
+
   def one_hot_dict(self,senses):
     """Return dictionary of one-hot encodings of list of items"""
     # Base vector, all zeros
@@ -204,17 +214,19 @@ class Data():
         x_new.append(sample)
     return x_new
 
-  def load_from_file(self, path, max_arg_len):
+  def load_from_file(self, path, max_arg_len, discourse_list=None):
     """ Parse the input
     Returns:
       x : list of tokenized discourse text
       y : list of labels
       arg_len : list of tuples (arg1_length, arg2_length)
+      discourse_list : if !None, saves discourse info to this list
     """
     x = list(); y = list(); arg_len=list(); decoder_targets=list();
     with codecs.open(path, encoding='utf8') as pdfile:
       for line in pdfile:
         j = json.loads(line)
+        if discourse_list is not None: discourse_list.append(j)
         arg1 = clean_str(j['Arg1']['RawText'])[:self.max_arg_len]
         arg2 = clean_str(j['Arg2']['RawText'])
         if self.bos_tag:
@@ -260,6 +272,41 @@ class Data():
     vocab = {x: i for i, x in enumerate(inv_vocab)}
     return vocab, inv_vocab
 
+  def conll_f1_score(self, predictions):
+    self.save_to_conll_format('tmp_val.json', predictions, self.val_disc_list)
+
+  def save_to_conll_format(self, path, predictions, discourse, append_file=False):
+    """ Saves as json in conll format
+    Args:
+      path : path where to write the json
+      predictions : sense prediction from the neural network, numpy array
+      discourse : list of dicourse dictionary. Index of discourse in this list
+            must match index of discourse in predictions array
+
+    Writes Json file, where each line is:
+    {   Arg1: {TokenList: [275, 276, 277], RawText: "raw text"},
+        Arg2: {TokenList: [301, 302, 303], RawText: "raw text"},
+        Connective: {TokenList: []},
+        DocID: 'wsj_1000',
+        Sense: ['Expansion.Conjunction'],
+        Type: 'Implicit'
+    }
+    """
+
+    if append_file == False:
+      # Remove file if exists
+      if os.path.isfile(path):
+        os.remove(path)
+
+    # Loop through results
+    with codecs.open(path, mode='a', encoding='utf8') as pdtb:
+      for i, disc in enumerate(discourse):
+        sense_id = int(predictions[i])
+        disc['Sense'] = [self.int_to_sense[sense_id]]
+        json.dump(disc, pdtb) #indent to add to new line
+        pdtb.write('\n')
+    print("\nSaved results as CoNLL json to here: ", path)
+
 def clean_str(string):
   """
   Clean string, return tokenized list
@@ -279,3 +326,4 @@ def clean_str(string):
   string = re.sub(r"\s{2,}", " ", string)
 
   return string.strip().lower().split()
+
