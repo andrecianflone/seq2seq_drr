@@ -4,7 +4,7 @@ conll_utils/
 embedding.txt
 *.swp
 tags
-trials
+trials*
 *~
 tmp*
 

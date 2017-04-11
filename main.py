@@ -16,10 +16,10 @@ nb_epochs      = 70              # max training epochs
 batch_size     = 32              # training batch size
 max_arg_len    = 60              # max length of each arg
 maxlen         = max_arg_len * 2 # max num of tokens per sample
-cell_units     = 64         # hidden layer size
+cell_units     = 256       # hidden layer size
 dec_out_units  = 32
 num_layers     = 2
-keep_prob      = 0.3
+keep_prob      = 0.5
 early_stop_epoch = 10 # stop after n epochs w/o improvement on val set
 
 ###############################################################################
