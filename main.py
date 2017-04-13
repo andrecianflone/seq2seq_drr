@@ -10,22 +10,18 @@ import numpy as np
 from enc_dec import BasicEncDec
 from utils import Progress, make_batches, Metrics, Callback
 import sys
-
-# Some hyperparams
-nb_epochs      = 70              # max training epochs
-batch_size     = 32              # training batch size
-max_arg_len    = 60              # max length of each arg
-maxlen         = max_arg_len * 2 # max num of tokens per sample
-cell_units     = 256       # hidden layer size
-dec_out_units  = 32
-num_layers     = 2
-keep_prob      = 0.5
-early_stop_epoch = 10 # stop after n epochs w/o improvement on val set
+from six.moves import cPickle as pickle
+from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+from pprint import pprint
+import codecs
 
 ###############################################################################
 # Data
 ###############################################################################
 # TODO: data section is messy, needs some cleaning
+max_arg_len = 60              # max length of each arg
+maxlen      = max_arg_len * 2 # max num of tokens per sample
+
 conll_data = Data(
             max_arg_len=max_arg_len,
             maxlen=maxlen,
@@ -59,22 +55,12 @@ embedding = emb.get_embedding_matrix(\
             save=True,
             load_saved=True)
 
-num_batches_train = len(x_train_enc)//batch_size+(len(x_train_enc)%batch_size>0)
-num_batches_test = len(x_test_enc)//batch_size+(len(x_test_enc)%batch_size>0)
 ###############################################################################
 # Main stuff
 ###############################################################################
-model = BasicEncDec(\
-        num_units=cell_units,
-        dec_out_units=dec_out_units,
-        max_seq_len=max_arg_len,
-        embedding=embedding,
-        num_classes=conll_data.num_classes,
-        emb_dim=embedding.shape[1])
 
-prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=30)
 
-def call_model(data, fetch, num_batches, keep_prob, shuffle):
+def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shuffle):
   """ Calls models and yields results per batch """
   batches = make_batches(data, batch_size, num_batches, shuffle=shuffle)
   results = []
@@ -100,23 +86,24 @@ def call_model(data, fetch, num_batches, keep_prob, shuffle):
     # yield the results when training
     yield result
 
-def train_one_epoch():
+def train_one_epoch(sess, model, keep_prob, batch_size, num_batches, prog):
   data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
           dec_len_train, dec_train,dec_mask_train]
   fetch = [model.class_optimizer, model.class_cost]
-  batch_results = call_model(data, fetch, num_batches_train, keep_prob, shuffle=True)
+  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shuffle=True)
   for result in batch_results:
     loss = result[1]
     prog.print_train(loss)
+    break
 
-def test_set_decoder_loss():
+def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
   """ Get the total loss for the entire batch """
   data = [x_test_enc, x_test_dec, classes_test, enc_len_test,
           dec_len_test, dec_test, dec_mask_test]
   fetch = [model.batch_size, model.class_cost]
   losses = np.zeros(num_batches_test) # to average the losses
   batch_w = np.zeros(num_batches_test) # batch weight
-  batch_results = call_model(data, fetch, num_batches_test, keep_prob=1, shuffle=False)
+  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob=1, shuffle=False)
   for i, result in enumerate(batch_results):
     # Keep track of losses to average later
     cur_b_size = result[0]
@@ -127,14 +114,14 @@ def test_set_decoder_loss():
   av = np.average(losses, weights=batch_w)
   prog.print_eval('decoder loss', av)
 
-def classification_f1():
+def classification_f1(sess, model, batch_size, num_batches_test, prog):
   """ Get the total loss for the entire batch """
   data = [x_test_enc, x_test_dec, classes_test, enc_len_test,
           dec_len_test, dec_test, dec_mask_test]
   fetch = [model.batch_size, model.class_cost, model.y_pred, model.y_true]
   y_pred = np.zeros(len(x_test_enc))
   y_true = np.zeros(len(x_test_enc))
-  batch_results = call_model(data, fetch, num_batches_test, keep_prob=1, shuffle=False)
+  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches_test, keep_prob=1, shuffle=False)
   start_id = 0
   for i, result in enumerate(batch_results):
     batch_size                           = result[0]
@@ -169,7 +156,7 @@ def language_model_class_loss():
           dec_len_test, dec_test, dec_mask_test]
     fetch = [model.batch_size, model.generator_loss, model.softmax_logits,
               model.dec_targets]
-    batch_results = call_model(data, fetch, num_batches_test, keep_prob=1, shuffle=False)
+    batch_results = call_model(sess, model, data, fetch, batch_size, num_batches_test, keep_prob=1, shuffle=False)
     j = 0
     for result in batch_results:
       cur_b_size = result[0]
@@ -193,18 +180,88 @@ def language_model_class_loss():
   accuracy = np.sum(correct)/len(correct)
   prog.print_class_eval(accuracy)
 
+###############################################################################
+# Hyperparameters
+###############################################################################
+# Default params
+hyperparams = {
+  'batch_size'       : 32,             # training batch size
+  'cell_units'       : 32,             # hidden layer size
+  'dec_out_units'    : 32,             # output from decoder
+  'num_layers'       : 2,              # not used
+  'keep_prob'        : 0.5,            # dropout keep probability
+  'nb_epochs'        : 70,             # max training epochs
+  'early_stop_epoch' : 10,             # stop after n epochs w/o improvement on val set
+}
+# Params configured for tuning
+search_space = {
+  'batch_size'    : hp.choice('batch_size', range(32, 128)),# training batch size
+  'cell_units'    : hp.choice('cell_units', range(4, 500)), # hidden layer size
+  'dec_out_units' : hp.choice('dec_out_units', range(4, 500)), # output from decoder
+  'num_layers'    : hp.choice('num_layers', range(1, 10)),  # not used
+  'keep_prob'     : hp.uniform('keep_prob', 0.1, 1)  # dropout keep probability
+}
+###############################################################################
+# Train
+###############################################################################
 # Launch training
-met = Metrics()
-cb = Callback(early_stop_epoch, met, prog)
-with tf.Session() as sess:
-  tf.global_variables_initializer().run()
-  for epoch in range(nb_epochs):
-    prog.epoch_start()
-    train_one_epoch()
-    prog.print_cust('|| val ')
-    met.f1_micro, met.f1, met.accuracy = classification_f1()
-    # test_set_decoder_loss()
-    # test_set_classification_loss()
-    if cb.early_stop() == True: break
+def train(params):
+  batch_size = params['batch_size']
+  num_batches_train = len(x_train_enc)//batch_size+(len(x_train_enc)%batch_size>0)
+  num_batches_test = len(x_test_enc)//batch_size+(len(x_test_enc)%batch_size>0)
+  prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=30)
+  met = Metrics()
+  cb = Callback(params['early_stop_epoch'], met, prog)
+  pprint(params)
+  # Save trials along the way
+  pickle.dump(trials, open("trials.p","wb"))
+
+  # Declare model with hyperparams
+  model = BasicEncDec(\
+          num_units=params['cell_units'],
+          dec_out_units=params['dec_out_units'],
+          max_seq_len=max_arg_len,
+          embedding=embedding,
+          num_classes=conll_data.num_classes,
+          emb_dim=embedding.shape[1])
+
+  # Start training
+  with tf.Session() as sess:
+    tf.global_variables_initializer().run()
+    for epoch in range(params['nb_epochs']):
+      prog.epoch_start()
+      train_one_epoch(sess, model, params['keep_prob'], batch_size, num_batches_train, prog)
+      prog.print_cust('|| val ')
+      met.f1_micro, met.f1, met.accuracy = classification_f1(sess, model, batch_size, num_batches_test, prog)
+      # test_set_decoder_loss(sess, model, batch_size, num_batches_test, prog)
+      # test_set_classification_loss()
+      if cb.early_stop() == True: break
+      prog.epoch_end()
     prog.epoch_end()
-  prog.epoch_end()
+
+  # Results of this trial
+  results = {
+      'loss'          : -met.f1_best, # required by hyperopt
+      'status'        : STATUS_OK, # required by hyperopt
+      'f1_micro_best' : met.f1_micro_best,
+      'accuracy_best' : met.accuracy_best,
+      'f1_best'       : met.f1_best,
+      'f1_best_epoch' : met.f1_best_epoch,
+      'params'        : params
+  }
+  # dump results
+  with codecs.open('test_trial', mode='a', encoding='utf8') as output:
+    json.dump(results, output)
+    pdtb.write('\n')
+  # Return for hyperopt
+  return results
+
+if __name__ == "__main__":
+  params = hyperparams
+  # params['cell_units'] = search_space['cell_units']
+  trials = Trials()
+  max_evals = 6
+  best = fmin(train, params, algo=tpe.suggest, max_evals=max_evals, trials=trials)
+  print('best: ')
+  print(best)
+  pickle.dump(trials, open("trials.p","wb"))
