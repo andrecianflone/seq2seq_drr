@@ -1,6 +1,15 @@
 """
+-----------
+Description
+-----------
+Implicit DRR with Seq2Seq with Attention
 Author: Andre Cianflone
-Encoder Decoder type model for DRR
+
+For a single trial, call script without arguments
+
+For hyperparameter search, call as this example:
+python main.py --trials 2 --search_param cell_units --file_save trials/cell_units
+-----------
 """
 from helper import Data
 from embeddings import Embeddings
@@ -14,6 +23,8 @@ from six.moves import cPickle as pickle
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 from pprint import pprint
 import codecs
+import json
+import argparse
 
 ###############################################################################
 # Data
@@ -192,6 +203,8 @@ hyperparams = {
   'keep_prob'        : 0.5,            # dropout keep probability
   'nb_epochs'        : 70,             # max training epochs
   'early_stop_epoch' : 10,             # stop after n epochs w/o improvement on val set
+  'bidirectional'    : True,
+  'attention'        : True
 }
 # Params configured for tuning
 search_space = {
@@ -206,6 +219,7 @@ search_space = {
 ###############################################################################
 # Launch training
 def train(params):
+  tf.reset_default_graph() # reset the graph for each trial
   batch_size = params['batch_size']
   num_batches_train = len(x_train_enc)//batch_size+(len(x_train_enc)%batch_size>0)
   num_batches_test = len(x_test_enc)//batch_size+(len(x_test_enc)%batch_size>0)
@@ -230,9 +244,11 @@ def train(params):
     tf.global_variables_initializer().run()
     for epoch in range(params['nb_epochs']):
       prog.epoch_start()
-      train_one_epoch(sess, model, params['keep_prob'], batch_size, num_batches_train, prog)
+      train_one_epoch(sess, model, params['keep_prob'], batch_size,
+                                                      num_batches_train, prog)
       prog.print_cust('|| val ')
-      met.f1_micro, met.f1, met.accuracy = classification_f1(sess, model, batch_size, num_batches_test, prog)
+      met.f1_micro, met.f1, met.accuracy = classification_f1(
+                          sess, model, batch_size, num_batches_test, prog)
       # test_set_decoder_loss(sess, model, batch_size, num_batches_test, prog)
       # test_set_classification_loss()
       if cb.early_stop() == True: break
@@ -250,17 +266,27 @@ def train(params):
       'params'        : params
   }
   # dump results
-  with codecs.open('test_trial', mode='a', encoding='utf8') as output:
-    json.dump(results, output)
-    pdtb.write('\n')
+  if 'file_save' in params:
+    with codecs.open(params['file_save'], mode='a', encoding='utf8') as output:
+      json.dump(results, output)
+      output.write('\n')
   # Return for hyperopt
   return results
 
 if __name__ == "__main__":
-  params = hyperparams
-  # params['cell_units'] = search_space['cell_units']
+  parser = argparse.ArgumentParser(description=__doc__,
+                          formatter_class=argparse.RawDescriptionHelpFormatter)
+  parser.add_argument('--trials', default=1, type=int, help='Max number of trials')
+  parser.add_argument('--search_param', help='Hyperparam search over this param')
+  parser.add_argument('--file_save', help='Save results of search to this json')
+  args = parser.parse_args()
+
   trials = Trials()
-  max_evals = 6
+  params = hyperparams
+  params[args.search_param] = search_space[args.search_param]
+  params['trials'] = trials
+  if args.file_save: params['file_save'] = args.file_save
+  max_evals = args.trials
   best = fmin(train, params, algo=tpe.suggest, max_evals=max_evals, trials=trials)
   print('best: ')
   print(best)
