@@ -105,7 +105,6 @@ def train_one_epoch(sess, model, keep_prob, batch_size, num_batches, prog):
   for result in batch_results:
     loss = result[1]
     prog.print_train(loss)
-    break
 
 def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
   """ Get the total loss for the entire batch """
@@ -217,8 +216,14 @@ search_space = {
 ###############################################################################
 # Train
 ###############################################################################
+current_trial = 0
 # Launch training
 def train(params):
+  global current_trial
+  current_trial += 1
+  print('-' * 79)
+  print('Current trial: {}'.format(current_trial))
+  print('-' * 79)
   tf.reset_default_graph() # reset the graph for each trial
   batch_size = params['batch_size']
   num_batches_train = len(x_train_enc)//batch_size+(len(x_train_enc)%batch_size>0)
@@ -284,7 +289,7 @@ if __name__ == "__main__":
   trials = Trials()
   params = hyperparams
   params[args.search_param] = search_space[args.search_param]
-  params['trials'] = trials
+  # params['trials'] = trials
   if args.file_save: params['file_save'] = args.file_save
   max_evals = args.trials
   best = fmin(train, params, algo=tpe.suggest, max_evals=max_evals, trials=trials)
