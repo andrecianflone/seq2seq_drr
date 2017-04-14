@@ -44,6 +44,11 @@ conll_data = Data(
 # y is a numpy array: [samples x classes]
 (X_train, classes_train, dec_train), (X_test, classes_test, dec_test) = \
                                                           conll_data.get_data()
+
+# Softmax weights, for tf.nn.weighted_cross_entropy_with_logits
+# 1/(expected ratio of positives), from training set
+weights_cross_entropy = conll_data.weights_cross_entropy
+
 # Encoder decoder inputs
 x_train_enc, x_train_dec = X_train[0], X_train[1]
 x_test_enc, x_test_dec = X_test[0], X_test[1]
@@ -242,7 +247,8 @@ def train(params):
           max_seq_len=max_arg_len,
           embedding=embedding,
           num_classes=conll_data.num_classes,
-          emb_dim=embedding.shape[1])
+          emb_dim=embedding.shape[1],
+          weights_cross_entropy=weights_cross_entropy)
 
   # Start training
   with tf.Session() as sess:
@@ -288,7 +294,7 @@ if __name__ == "__main__":
 
   trials = Trials()
   params = hyperparams
-  params[args.search_param] = search_space[args.search_param]
+  if args.search_param: params[args.search_param] = search_space[args.search_param]
   # params['trials'] = trials
   if args.file_save: params['file_save'] = args.file_save
   max_evals = args.trials

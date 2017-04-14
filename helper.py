@@ -43,6 +43,7 @@ class Data():
     self.int_to_sense     = self.get_int_to_sense_dict(self.sense_to_one_hot)
     self.num_classes      = self.get_class_counts(self.mapping_sense)
     # array shape [samples, 1], or [samples,2] if split
+    self.weights_cross_entropy = None
 
 
   def get_data(self, w_sent_len=False):
@@ -65,6 +66,9 @@ class Data():
     # These are already numpy arrays
     y_train = self.set_output_for_network(y_train)
     y_val = self.set_output_for_network(y_val)
+
+    # 1 / (ratio of positives)
+    self.weights_cross_entropy = (np.sum(y_train, axis=0)/np.sum(y_train))
 
     # Pad input according to split
     x_train = self.pad_input(x_train, self.seq_len_train, self.split_input)

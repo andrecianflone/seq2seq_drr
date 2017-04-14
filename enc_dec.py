@@ -6,13 +6,14 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
   def __init__(self, num_units, dec_out_units, max_seq_len, embedding,
-      num_classes, emb_dim):
+      num_classes, emb_dim, weights_cross_entropy):
     self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32
     self.int_type = tf.int32
     self.final_emb_dim = emb_dim + num_classes
     self.bi_encoder_hidden = num_units * 2
     decoder_num_units = num_units *2
+    self.weights_cross_entropy = weights_cross_entropy
 
     ############################
     # Model inputs
@@ -85,9 +86,19 @@ class BasicEncDec():
     # TODO: try tf.nn.weighted_cross_entropy_with_logits instead
     # where pos_weight = 1 / (expected ratio of positives). So more weight
     # given to less likely class => should increase f1 score
-    self.class_loss = tf.nn.softmax_cross_entropy_with_logits(
-                      labels=self.classes,
-                      logits=self.class_logits)
+    weights = tf.constant(self.weights_cross_entropy, dtype=self.float_type)
+    weights = tf.expand_dims(weights,0)
+    weights = tf.tile(weights, [self.batch_size,1])
+    class_cast = tf.cast(self.classes, dtype=self.float_type)
+    self.class_loss = tf.nn.weighted_cross_entropy_with_logits(
+                      targets=class_cast,
+                      logits=self.class_logits,
+                      pos_weight=weights)
+
+    # self.class_loss = tf.nn.softmax_cross_entropy_with_logits(
+                      # labels=self.classes,
+                      # logits=self.class_logits)
+
     self.class_cost = tf.reduce_mean(self.class_loss) # average across batch
     self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
 
