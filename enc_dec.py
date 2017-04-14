@@ -83,17 +83,19 @@ class BasicEncDec():
         self.decoded_final_state, dec_out_units, num_classes, "class_softmax")
 
     # Classification loss
-    # TODO: try tf.nn.weighted_cross_entropy_with_logits instead
-    # where pos_weight = 1 / (expected ratio of positives). So more weight
-    # given to less likely class => should increase f1 score
-    weights = tf.constant(self.weights_cross_entropy, dtype=self.float_type)
-    weights = tf.expand_dims(weights,0)
-    weights = tf.tile(weights, [self.batch_size,1])
-    class_cast = tf.cast(self.classes, dtype=self.float_type)
-    self.class_loss = tf.nn.weighted_cross_entropy_with_logits(
-                      targets=class_cast,
-                      logits=self.class_logits,
-                      pos_weight=weights)
+    classes_max = tf.argmax(self.classes, axis=1)
+    self.class_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                      labels=classes_max,
+                      logits=self.class_logits)
+
+    # weights = tf.constant(self.weights_cross_entropy, dtype=self.float_type)
+    # weights = tf.expand_dims(weights,0)
+    # weights = tf.tile(weights, [self.batch_size,1])
+    # class_cast = tf.cast(self.classes, dtype=self.float_type)
+    # self.class_loss = tf.nn.weighted_cross_entropy_with_logits(
+                      # targets=class_cast,
+                      # logits=self.class_logits,
+                      # pos_weight=weights)
 
     # self.class_loss = tf.nn.softmax_cross_entropy_with_logits(
                       # labels=self.classes,
