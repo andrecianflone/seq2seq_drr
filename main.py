@@ -11,7 +11,7 @@ For hyperparameter search, call as this example:
 python main.py --trials 2 --search_param cell_units --file_save trials/cell_units
 -----------
 """
-from helper import Data
+from helper import Preprocess
 from embeddings import Embeddings
 import tensorflow as tf
 from sklearn.metrics import f1_score, accuracy_score
@@ -33,10 +33,13 @@ import argparse
 max_arg_len = 60              # max length of each arg
 maxlen      = max_arg_len * 2 # max num of tokens per sample
 
-conll_data = Data(
+conll_data = Preprocess(
             max_arg_len=max_arg_len,
             maxlen=maxlen,
             split_input=True,
+            prep_validation_set=True,
+            prep_test_set=True,
+            prep_blind_set=True,
             bos_tag="<bos>",
             eos_tag="<eos>")
 
@@ -44,10 +47,6 @@ conll_data = Data(
 # y is a numpy array: [samples x classes]
 (X_train, classes_train, dec_train), (X_test, classes_test, dec_test) = \
                                                           conll_data.get_data()
-
-# Softmax weights, for tf.nn.weighted_cross_entropy_with_logits
-# 1/(expected ratio of positives), from training set
-weights_cross_entropy = conll_data.weights_cross_entropy
 
 # Encoder decoder inputs
 x_train_enc, x_train_dec = X_train[0], X_train[1]

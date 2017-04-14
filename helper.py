@@ -11,15 +11,28 @@ from conll_utils.scorer import f1_non_explicit
 dtype='int32' # default numpy int dtype
 
 # TODO : checkout tf.contrib preprocessing for tokenization
-
 class Data():
+  def __init__(self, path_source):
+    self.path_source = path_source
+    self.x = None
+    self.classes = None
+    self.seq_len = [] # list of tuple(len_arg1, len_arg2)
+    self.decoder_target = []
+    self.orig_disc = {} # the original discourse from json to dict
+
+class Preprocess():
   def __init__(self,
         max_arg_len, # max length of each argument
         maxlen, # maximum total length of input
         mapping_path='data/map_proper_conll.json',
         split_input=True, # boolean, split input into separate numpy arrays
-        train_file = "data/train.json",
-        val_file = "data/dev.json",
+        training_set="data/train.json"
+        validation_set="data/dev.json",
+        test_set="data/test.json",
+        blind_set="data/blind.json",
+        prep_validation_set=True,
+        prep_test_set=True,
+        prep_blind_set=True,
         decoder_targets=False, # second arg without bos
         bos_tag = None, # beginning of sequence tag
         eos_tag = None, # end of sequence tag
@@ -45,60 +58,99 @@ class Data():
     # array shape [samples, 1], or [samples,2] if split
     self.weights_cross_entropy = None
 
+    # Set what to process
+    self.data_collect = {'training_set': Data(training_set)}
+    if prep_validation_set: self.data_collect['validation_set'] = Data(validation_set)
+    if test_set: self.data_collect['test_set'] = Data(test_set)
+    if blind_set: self.data_collect['blind'] = Data(blind_set)
 
-  def get_data(self, w_sent_len=False):
-    """ Return x/y for train/val """
+    # Tokenize and pad
+    for data in self.data_collect.values():
+      data.x, data.classes, data.seq_len, data.decoder_target, data.orig_disc= \
+          self.load_from_file(data.path_source, self.max_arg_len)
 
-    # TODO: because of all the list changes, should use collections.deque
+      # Array with elements arg1 length, arg2 length
+      data.seq_len = np.array(data.seq_len, dtype=dtype)
 
-    # Load data as lists of tokens
-    x_train, y_train, seq_len_train, dec_targ_train= \
-        self.load_from_file(self.train_file, self.max_arg_len)
-    self.val_disc_list = []
-    x_val, y_val, seq_len_val, dec_targ_val= \
-        self.load_from_file(self.val_file, self.max_arg_len, self.val_disc_list)
+      # Map original sense (y value) to one hot output or multiple outputs (list)
+      # These are already numpy arrays
+      data.classes = self.set_output_for_network(data.classes)
+
+      # Pad input according to split
+      data.x = self.pad_input(data.x, data.seq_len, self.split_input)
+      data.decoder_target = self.pad_input(data.decoder_target, split=False)
+
+    # self.weights_cross_entropy = (np.sum(y_train, axis=0)/np.sum(y_train))
+
+    # Create vocab for all data
+    x_list = [data.x for data in self.data_collect.values()]
+    if self.vocab == None:
+      self.vocab, self.inv_vocab = self.create_vocab(x_list)
+    self.total_tokens = len(self.vocab)
+
+    # Integerize x and decoder targets, and make numpy arrays
+    for k, data in self.data_collect.items():
+      # Integerize
+      data.x = self.integerize(data.x, self.vocab)
+      data.decoder_target = self.integerize(data.decoder_target, self.vocab)
+
+      # Make numpy
+      data.x = np.array(data.x)
+      data.decoder_target = np.array(data.target)
+
+      # Split the input between arguments if so desired
+      if self.split_input:
+        data.x = self.split_x(data.x)
+
+  def get_data(self, dataset_name):
+    """ Returns data object for specific dataset """
+
+    # # Load data as lists of tokens
+    # x_train, y_train, seq_len_train, dec_targ_train= \
+        # self.load_from_file(self.train_file, self.max_arg_len)
+    # self.val_disc_list = []
+    # x_val, y_val, seq_len_val, dec_targ_val= \
+        # self.load_from_file(self.val_file, self.max_arg_len, self.val_disc_list)
 
     # Array with elements arg1 length, arg2 length
-    self.seq_len_train = np.array(seq_len_train, dtype=dtype)
-    self.seq_len_val = np.array(seq_len_val, dtype=dtype)
+    # self.seq_len_train = np.array(seq_len_train, dtype=dtype)
+    # self.seq_len_val = np.array(seq_len_val, dtype=dtype)
 
     # Map original sense (y value) to one hot output or multiple outputs (list)
     # These are already numpy arrays
-    y_train = self.set_output_for_network(y_train)
-    y_val = self.set_output_for_network(y_val)
+    # y_train = self.set_output_for_network(y_train)
+    # y_val = self.set_output_for_network(y_val)
 
-    # 1 / (ratio of positives)
-    self.weights_cross_entropy = (np.sum(y_train, axis=0)/np.sum(y_train))
 
     # Pad input according to split
-    x_train = self.pad_input(x_train, self.seq_len_train, self.split_input)
-    x_val   = self.pad_input(x_val, self.seq_len_val, self.split_input)
-    dec_targ_train = self.pad_input(dec_targ_train, split=False)
-    dec_targ_val = self.pad_input(dec_targ_val, split=False)
+    # x_train = self.pad_input(x_train, self.seq_len_train, self.split_input)
+    # x_val   = self.pad_input(x_val, self.seq_len_val, self.split_input)
+    # dec_targ_train = self.pad_input(dec_targ_train, split=False)
+    # dec_targ_val = self.pad_input(dec_targ_val, split=False)
 
     # Create vocab
-    if self.vocab == None:
-      self.vocab, self.inv_vocab = self.create_vocab(x_train,x_val)
-    self.total_tokens = len(self.vocab)
+    # if self.vocab == None:
+      # self.vocab, self.inv_vocab = self.create_vocab(x_train,x_val)
+    # self.total_tokens = len(self.vocab)
 
     # Integerize x
-    x_train = self.integerize(x_train, self.vocab)
-    x_val = self.integerize(x_val, self.vocab)
-    dec_targ_train = self.integerize(dec_targ_train, self.vocab)
-    dec_targ_val = self.integerize(dec_targ_val, self.vocab)
+    # x_train = self.integerize(x_train, self.vocab)
+    # x_val = self.integerize(x_val, self.vocab)
+    # dec_targ_train = self.integerize(dec_targ_train, self.vocab)
+    # dec_targ_val = self.integerize(dec_targ_val, self.vocab)
 
     # Make x into numpy arrays!
-    x_train = np.array(x_train)
-    x_val = np.array(x_val)
-    dec_targ_train = np.array(dec_targ_train)
-    dec_targ_val = np.array(dec_targ_val)
+    # x_train = np.array(x_train)
+    # x_val = np.array(x_val)
+    # dec_targ_train = np.array(dec_targ_train)
+    # dec_targ_val = np.array(dec_targ_val)
 
     # Split the input between arguments if so desired
-    if self.split_input:
-      x_train = self.split_x(x_train)
-      x_val = self.split_x(x_val)
+    # if self.split_input:
+      # x_train = self.split_x(x_train)
+      # x_val = self.split_x(x_val)
 
-    return (x_train, y_train, dec_targ_train), (x_val, y_val, dec_targ_val)
+    return self.data_collect[dataset_name]
 
   def get_seq_length(self):
     return self.seq_len_train , self.seq_len_val
@@ -219,7 +271,7 @@ class Data():
         x_new.append(sample)
     return x_new
 
-  def load_from_file(self, path, max_arg_len, discourse_list=None):
+  def load_from_file(self, path, max_arg_len):
     """ Parse the input
     Returns:
       x : list of tokenized discourse text
@@ -231,7 +283,7 @@ class Data():
     with codecs.open(path, encoding='utf8') as pdfile:
       for line in pdfile:
         j = json.loads(line)
-        if discourse_list is not None: discourse_list.append(j)
+        discourse_list.append(j)
         arg1 = clean_str(j['Arg1']['RawText'])[:self.max_arg_len]
         arg2 = clean_str(j['Arg2']['RawText'])
         if self.bos_tag:
