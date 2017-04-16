@@ -20,6 +20,11 @@ class Data():
     self.decoder_target = []
     self.orig_disc = {} # the original discourse from json to dict
 
+  @property
+  def encoder_input(self):
+    """ Encoder
+    x_train_enc, x_train_dec = X_train[0], X_train[1]
+
 class Preprocess():
   def __init__(self,
         max_arg_len, # max length of each argument
