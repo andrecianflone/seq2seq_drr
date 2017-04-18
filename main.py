@@ -47,25 +47,16 @@ conll_data = Preprocess(
 training_set = conll_data.data_collect['training_set']
 test_set = conll_data.data_collect['validation_set']
 
-# X is a list of narrays: [arg1, arg2] , args are integers
-# y is a numpy array: [samples x classes]
-# (X_train, classes_train, dec_train), (X_test, classes_test, dec_test) = \
-                                                          # conll_data.get_data()
 dec_train = training_set.decoder_target
 classes_train = training_set.classes
 
 # Encoder decoder inputs
-# x_train_enc, x_train_dec = X_train[0], X_train[1]
-# x_test_enc, x_test_dec = X_test[0], X_test[1]
 x_train_enc = training_set.encoder_input
 x_train_dec = training_set.decoder_input
 x_test_enc = test_set.encoder_input
 x_test_dec = test_set.decoder_input
 
 # Sequence length as numpy array shape [samples x 2]
-# seq_len_train, seq_len_test = conll_data.get_seq_length()
-# enc_len_train, dec_len_train = seq_len_train[:,0], seq_len_train[:,1]
-# enc_len_test, dec_len_test = seq_len_test[:,0], seq_len_test[:,1]
 enc_len_train = training_set.seq_len_encoder
 dec_len_train = training_set.seq_len_decoder
 enc_len_test = test_set.seq_len_encoder
@@ -80,7 +71,8 @@ dec_mask_test  = test_set.decoder_mask
 emb = Embeddings(conll_data.vocab, conll_data.inv_vocab, random_init_unknown=True)
 # embedding is a numpy array [vocab size x embedding dimension]
 embedding = emb.get_embedding_matrix(\
-            model_path='data/google_news_300.bin',
+            word2vec_model_path='data/google_news_300.bin',
+            small_model_path="data/embedding.json",
             save=True,
             load_saved=True)
 
@@ -94,23 +86,24 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shu
   batches = make_batches(data, batch_size, num_batches, shuffle=shuffle)
   results = []
   for batch in batches:
-    b_enc         = batch[0]
-    b_dec         = batch[1]
-    b_classes     = batch[2]
-    b_enc_len     = batch[3]
-    b_dec_len     = batch[4]
-    b_dec_targets = batch[5]
-    b_dec_mask    = batch[6]
+    # b_enc         = batch[0]
+    # b_dec         = batch[1]
+    # b_classes     = batch[2]
+    # b_enc_len     = batch[3]
+    # b_dec_len     = batch[4]
+    # b_dec_targets = batch[5]
+    # b_dec_mask    = batch[6]
     feed = {
-             model.enc_input       : b_enc,
-             model.enc_input_len   : b_enc_len,
-             model.classes         : b_classes,
-             model.dec_targets     : b_dec_targets,
-             model.dec_input       : b_dec,
-             model.dec_input_len   : b_dec_len,
-             model.dec_weight_mask : b_dec_mask,
+             model.enc_input       : data.encoder_input,
+             model.enc_input_len   : data.seq_len_encoder,
+             model.classes         : data.classes,
+             model.dec_targets     : data.decoder_targets,
+             model.dec_input       : data.decoder_input,
+             model.dec_input_len   : data.seq_len_decoder,
+             model.dec_weight_mask : data.decoder_mask,
              model.keep_prob       : keep_prob
            }
+
     result = sess.run(fetch,feed)
     # yield the results when training
     yield result
@@ -260,8 +253,7 @@ def train(params):
           max_seq_len=max_arg_len,
           embedding=embedding,
           num_classes=conll_data.num_classes,
-          emb_dim=embedding.shape[1],
-          weights_cross_entropy=weights_cross_entropy)
+          emb_dim=embedding.shape[1])
 
   # Start training
   with tf.Session() as sess:

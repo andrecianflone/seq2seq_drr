@@ -18,12 +18,15 @@ class Data():
     self.classes = None
     self._seq_len = [] # list of tuple(len_arg1, len_arg2)
     self.decoder_target = []
-    self.orig_disc = {} # the original discourse from json to dict
+    self.orig_disc = [] # the original discourse, list from json to dict
 
-  def __setattr__(self, name, value):
-    if name == 'seq_len':
-      name = '_seq_len'
-    super(Data, self).__setattr__(name, value)
+  @property
+  def seq_len(self):
+    return self._seq_len
+
+  @seq_len.setter
+  def seq_len(self, value):
+    self._seq_len = value
 
   @property
   def encoder_input(self):
@@ -121,9 +124,8 @@ class Preprocess():
     # self.weights_cross_entropy = (np.sum(y_train, axis=0)/np.sum(y_train))
 
     # Create vocab for all data
-    x_list = [data.x for data in self.data_collect.values()]
     if self.vocab == None:
-      self.vocab, self.inv_vocab = self.create_vocab(x_list)
+      self.vocab, self.inv_vocab = self.create_vocab(self.data_collect)
     self.total_tokens = len(self.vocab)
 
     # Integerize x and decoder targets, and make numpy arrays
@@ -134,64 +136,11 @@ class Preprocess():
 
       # Make numpy
       data.x = np.array(data.x)
-      data.decoder_target = np.array(data.target)
+      data.decoder_target = np.array(data.decoder_target)
 
       # Split the input between arguments if so desired
       if self.split_input:
         data.x = self.split_x(data.x)
-
-  def get_data(self, dataset_name):
-    """ Returns data object for specific dataset """
-
-    # # Load data as lists of tokens
-    # x_train, y_train, seq_len_train, dec_targ_train= \
-        # self.load_from_file(self.train_file, self.max_arg_len)
-    # self.val_disc_list = []
-    # x_val, y_val, seq_len_val, dec_targ_val= \
-        # self.load_from_file(self.val_file, self.max_arg_len, self.val_disc_list)
-
-    # Array with elements arg1 length, arg2 length
-    # self.seq_len_train = np.array(seq_len_train, dtype=dtype)
-    # self.seq_len_val = np.array(seq_len_val, dtype=dtype)
-
-    # Map original sense (y value) to one hot output or multiple outputs (list)
-    # These are already numpy arrays
-    # y_train = self.set_output_for_network(y_train)
-    # y_val = self.set_output_for_network(y_val)
-
-
-    # Pad input according to split
-    # x_train = self.pad_input(x_train, self.seq_len_train, self.split_input)
-    # x_val   = self.pad_input(x_val, self.seq_len_val, self.split_input)
-    # dec_targ_train = self.pad_input(dec_targ_train, split=False)
-    # dec_targ_val = self.pad_input(dec_targ_val, split=False)
-
-    # Create vocab
-    # if self.vocab == None:
-      # self.vocab, self.inv_vocab = self.create_vocab(x_train,x_val)
-    # self.total_tokens = len(self.vocab)
-
-    # Integerize x
-    # x_train = self.integerize(x_train, self.vocab)
-    # x_val = self.integerize(x_val, self.vocab)
-    # dec_targ_train = self.integerize(dec_targ_train, self.vocab)
-    # dec_targ_val = self.integerize(dec_targ_val, self.vocab)
-
-    # Make x into numpy arrays!
-    # x_train = np.array(x_train)
-    # x_val = np.array(x_val)
-    # dec_targ_train = np.array(dec_targ_train)
-    # dec_targ_val = np.array(dec_targ_val)
-
-    # Split the input between arguments if so desired
-    # if self.split_input:
-      # x_train = self.split_x(x_train)
-      # x_val = self.split_x(x_val)
-
-    return self.data_collect[dataset_name]
-
-  # def get_seq_length(self):
-    # return self.seq_len_train , self.seq_len_val
 
   def set_output_for_network(self, y):
     """ Returns single list of y values, or multiple lists if multiple lists
@@ -318,6 +267,7 @@ class Preprocess():
       discourse_list : if !None, saves discourse info to this list
     """
     x = list(); y = list(); arg_len=list(); decoder_targets=list();
+    discourse_list = list()
     with codecs.open(path, encoding='utf8') as pdfile:
       for line in pdfile:
         j = json.loads(line)
@@ -342,7 +292,7 @@ class Preprocess():
         x.append(arg1)
         y.append(label)
         arg_len.append((l1,l2))
-    return x, y, arg_len, decoder_targets
+    return x, y, arg_len, decoder_targets, discourse_list
 
   def add_tags(self, seq_list):
     """ Adds beginning and/or end of sequence tags if set """
@@ -352,14 +302,18 @@ class Preprocess():
       seq_list.append(self.eos_tag)
     return seq_list
 
-  def create_vocab(self, train_data, val_data):
+  def create_vocab(self, data_collect):
     """ Create a dictionary of words to int, and the reverse
 
     You'll want to save this, required for model restore
     """
-    words = [word for sublist in train_data for word in sublist]
-    words.extend([word for sublist in val_data for word in sublist])
-    words.extend([self.eos_tag] * len(train_data)) # silly hack to add tag
+    # Get raw data
+    x_list = [data.x for data in data_collect.values()]
+    sample_count = sum([len(x) for x in x_list])
+    words = []
+    for data in x_list:
+      words.extend([word for sublist in data for word in sublist])
+    words.extend([self.eos_tag] * sample_count) # silly hack to add tag
     count = Counter(words) # word count
     # Vocab in descending order
     inv_vocab = [x[0] for x in count.most_common()]

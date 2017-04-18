@@ -64,7 +64,6 @@ def make_batches(data, batch_size, num_batches,shuffle=True):
       batch.append(d[start_index:end_index])
     yield batch
 
-
 class Metrics():
   """ Keeps score of metrics during training """
   def __init__(self):

@@ -19,7 +19,8 @@ class Embeddings():
     self.vocab = vocab
     self.inv_vocab = inverse_vocab
 
-  def get_embedding_matrix(self, model_path=None,save=False, load_saved=False):
+  def get_embedding_matrix(self, word2vec_model_path=None,small_model_path=None,
+            save=False, load_saved=False):
     """ Get the embedding from word2vec, needed for embedding layer. Words
     not found in the word2vec dictionary are randomly initialized
     Args:
@@ -29,8 +30,8 @@ class Embeddings():
     Returns:
       numpy array where row index equivalent to word id in self.vocab
     """
-    embedding_file = "data/embedding.json"
-    model_path = os.path.abspath(model_path)
+    embedding_file = small_model_path
+    model_path = os.path.abspath(word2vec_model_path)
     if model_path == None:
       assert load_saved == True
     if load_saved and os.path.isfile(embedding_file):

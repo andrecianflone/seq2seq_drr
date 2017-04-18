@@ -6,14 +6,13 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
   def __init__(self, num_units, dec_out_units, max_seq_len, embedding,
-      num_classes, emb_dim, weights_cross_entropy):
+      num_classes, emb_dim):
     self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32
     self.int_type = tf.int32
     self.final_emb_dim = emb_dim + num_classes
     self.bi_encoder_hidden = num_units * 2
     decoder_num_units = num_units *2
-    self.weights_cross_entropy = weights_cross_entropy
 
     ############################
     # Model inputs
