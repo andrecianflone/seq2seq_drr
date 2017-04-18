@@ -43,24 +43,38 @@ conll_data = Preprocess(
             bos_tag="<bos>",
             eos_tag="<eos>")
 
+# Data sets
+training_set = conll_data.data_collect['training_set']
+test_set = conll_data.data_collect['validation_set']
+
 # X is a list of narrays: [arg1, arg2] , args are integers
 # y is a numpy array: [samples x classes]
-(X_train, classes_train, dec_train), (X_test, classes_test, dec_test) = \
-                                                          conll_data.get_data()
+# (X_train, classes_train, dec_train), (X_test, classes_test, dec_test) = \
+                                                          # conll_data.get_data()
+dec_train = training_set.decoder_target
+classes_train = training_set.classes
 
 # Encoder decoder inputs
-x_train_enc, x_train_dec = X_train[0], X_train[1]
-x_test_enc, x_test_dec = X_test[0], X_test[1]
+# x_train_enc, x_train_dec = X_train[0], X_train[1]
+# x_test_enc, x_test_dec = X_test[0], X_test[1]
+x_train_enc = training_set.encoder_input
+x_train_dec = training_set.decoder_input
+x_test_enc = test_set.encoder_input
+x_test_dec = test_set.decoder_input
 
 # Sequence length as numpy array shape [samples x 2]
-seq_len_train, seq_len_test = conll_data.get_seq_length()
-enc_len_train, dec_len_train = seq_len_train[:,0], seq_len_train[:,1]
-enc_len_test, dec_len_test = seq_len_test[:,0], seq_len_test[:,1]
+# seq_len_train, seq_len_test = conll_data.get_seq_length()
+# enc_len_train, dec_len_train = seq_len_train[:,0], seq_len_train[:,1]
+# enc_len_test, dec_len_test = seq_len_test[:,0], seq_len_test[:,1]
+enc_len_train = training_set.seq_len_encoder
+dec_len_train = training_set.seq_len_decoder
+enc_len_test = test_set.seq_len_encoder
+dec_len_test = test_set.seq_len_decoder
 
 # Decoder loss masking
 # For mask to work, padding must be integer 0
-dec_mask_train = np.sign(X_train[1])
-dec_mask_test  = np.sign(X_test[1])
+dec_mask_train = training_set.decoder_mask
+dec_mask_test  = test_set.decoder_mask
 
 # Word embeddings
 emb = Embeddings(conll_data.vocab, conll_data.inv_vocab, random_init_unknown=True)

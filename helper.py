@@ -14,16 +14,49 @@ dtype='int32' # default numpy int dtype
 class Data():
   def __init__(self, path_source):
     self.path_source = path_source
-    self.x = None
+    self._x = None
     self.classes = None
-    self.seq_len = [] # list of tuple(len_arg1, len_arg2)
+    self._seq_len = [] # list of tuple(len_arg1, len_arg2)
     self.decoder_target = []
     self.orig_disc = {} # the original discourse from json to dict
 
+  def __setattr__(self, name, value):
+    if name == 'seq_len':
+      name = '_seq_len'
+    super(Data, self).__setattr__(name, value)
+
   @property
   def encoder_input(self):
-    """ Encoder
-    x_train_enc, x_train_dec = X_train[0], X_train[1]
+    """ Encoder input """
+    return self._x[0]
+
+  @property
+  def decoder_input(self):
+    """ Decoder input """
+    return self._x[1]
+
+  @property
+  def x(self):
+    return self._x
+
+  @x.setter
+  def x(self, value):
+    self._x = value
+
+  @property
+  def seq_len_encoder(self):
+    """ Sequence length for encoder input """
+    return self._seq_len[:,0]
+
+  @property
+  def seq_len_decoder(self):
+    """ Sequence length for decoder input """
+    return self._seq_len[:,1]
+
+  @property
+  def decoder_mask(self):
+    """ Sequence length for decoder input """
+    return np.sign(self._x[1])
 
 class Preprocess():
   def __init__(self,
@@ -31,7 +64,7 @@ class Preprocess():
         maxlen, # maximum total length of input
         mapping_path='data/map_proper_conll.json',
         split_input=True, # boolean, split input into separate numpy arrays
-        training_set="data/train.json"
+        training_set="data/train.json",
         validation_set="data/dev.json",
         test_set="data/test.json",
         blind_set="data/blind.json",
@@ -44,8 +77,8 @@ class Preprocess():
         vocab=None, # If none, will create the vocab
         inv_vocab=None): # If none, generates inverse vocab
 
-    self.train_file   = train_file
-    self.val_file     = val_file
+    # self.train_file   = training_set
+    # self.val_file     = validation_set
     self.max_arg_len  = max_arg_len
     self.vocab        = None # set in method get_data
     self.inv_vocab    = inv_vocab # set in method get_data
@@ -157,8 +190,8 @@ class Preprocess():
 
     return self.data_collect[dataset_name]
 
-  def get_seq_length(self):
-    return self.seq_len_train , self.seq_len_val
+  # def get_seq_length(self):
+    # return self.seq_len_train , self.seq_len_val
 
   def set_output_for_network(self, y):
     """ Returns single list of y values, or multiple lists if multiple lists
