@@ -29,7 +29,6 @@ import argparse
 ###############################################################################
 # Data
 ###############################################################################
-# TODO: data section is messy, needs some cleaning
 max_arg_len = 60              # max length of each arg
 maxlen      = max_arg_len * 2 # max num of tokens per sample
 
@@ -44,28 +43,8 @@ conll_data = Preprocess(
             eos_tag="<eos>")
 
 # Data sets
-training_set = conll_data.data_collect['training_set']
-test_set = conll_data.data_collect['validation_set']
-
-dec_train = training_set.decoder_target
-classes_train = training_set.classes
-
-# Encoder decoder inputs
-x_train_enc = training_set.encoder_input
-x_train_dec = training_set.decoder_input
-x_test_enc = test_set.encoder_input
-x_test_dec = test_set.decoder_input
-
-# Sequence length as numpy array shape [samples x 2]
-enc_len_train = training_set.seq_len_encoder
-dec_len_train = training_set.seq_len_decoder
-enc_len_test = test_set.seq_len_encoder
-dec_len_test = test_set.seq_len_decoder
-
-# Decoder loss masking
-# For mask to work, padding must be integer 0
-dec_mask_train = training_set.decoder_mask
-dec_mask_test  = test_set.decoder_mask
+train_set = conll_data.data_collect['training_set']
+val_set = conll_data.data_collect['validation_set']
 
 # Word embeddings
 emb = Embeddings(conll_data.vocab, conll_data.inv_vocab, random_init_unknown=True)
@@ -79,28 +58,18 @@ embedding = emb.get_embedding_matrix(\
 ###############################################################################
 # Main stuff
 ###############################################################################
-
-
 def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shuffle):
   """ Calls models and yields results per batch """
   batches = make_batches(data, batch_size, num_batches, shuffle=shuffle)
-  results = []
   for batch in batches:
-    # b_enc         = batch[0]
-    # b_dec         = batch[1]
-    # b_classes     = batch[2]
-    # b_enc_len     = batch[3]
-    # b_dec_len     = batch[4]
-    # b_dec_targets = batch[5]
-    # b_dec_mask    = batch[6]
     feed = {
-             model.enc_input       : data.encoder_input,
-             model.enc_input_len   : data.seq_len_encoder,
-             model.classes         : data.classes,
-             model.dec_targets     : data.decoder_targets,
-             model.dec_input       : data.decoder_input,
-             model.dec_input_len   : data.seq_len_decoder,
-             model.dec_weight_mask : data.decoder_mask,
+             model.enc_input       : batch.encoder_input,
+             model.enc_input_len   : batch.seq_len_encoder,
+             model.classes         : batch.classes,
+             model.dec_targets     : batch.decoder_target,
+             model.dec_input       : batch.decoder_input,
+             model.dec_input_len   : batch.seq_len_decoder,
+             model.dec_weight_mask : batch.decoder_mask,
              model.keep_prob       : keep_prob
            }
 
@@ -108,14 +77,35 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shu
     # yield the results when training
     yield result
 
-def train_one_epoch(sess, model, keep_prob, batch_size, num_batches, prog):
-  data = [x_train_enc, x_train_dec, classes_train, enc_len_train,
-          dec_len_train, dec_train,dec_mask_train]
+def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches, prog):
   fetch = [model.class_optimizer, model.class_cost]
   batch_results = call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shuffle=True)
   for result in batch_results:
     loss = result[1]
     prog.print_train(loss)
+
+def classification_f1(sess, data, model, batch_size, num_batches_test, prog):
+  """ Get the total loss for the entire batch """
+  fetch = [model.batch_size, model.class_cost, model.y_pred, model.y_true]
+  y_pred = np.zeros(data.size())
+  y_true = np.zeros(data.size())
+  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches_test, keep_prob=1, shuffle=False)
+  start_id = 0
+  for i, result in enumerate(batch_results):
+    batch_size                           = result[0]
+    cost                                 = result[1]
+    y_pred[start_id:start_id+batch_size] = result[2]
+    y_true[start_id:start_id+batch_size] = result[3]
+    start_id += batch_size
+
+  # Metrics
+  f1_micro = f1_score(y_true, y_pred, average='micro')
+  prog.print_eval('micro_f1', f1_micro)
+  acc = accuracy_score(y_true, y_pred)
+  prog.print_eval('acc', acc)
+  f1_conll = conll_data.conll_f1_score(y_pred, data.orig_disc)
+  prog.print_eval('con_f1', f1_conll)
+  return f1_micro, f1_conll, acc
 
 def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
   """ Get the total loss for the entire batch """
@@ -134,31 +124,6 @@ def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
   # Average across batches
   av = np.average(losses, weights=batch_w)
   prog.print_eval('decoder loss', av)
-
-def classification_f1(sess, model, batch_size, num_batches_test, prog):
-  """ Get the total loss for the entire batch """
-  data = [x_test_enc, x_test_dec, classes_test, enc_len_test,
-          dec_len_test, dec_test, dec_mask_test]
-  fetch = [model.batch_size, model.class_cost, model.y_pred, model.y_true]
-  y_pred = np.zeros(len(x_test_enc))
-  y_true = np.zeros(len(x_test_enc))
-  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches_test, keep_prob=1, shuffle=False)
-  start_id = 0
-  for i, result in enumerate(batch_results):
-    batch_size                           = result[0]
-    cost                                 = result[1]
-    y_pred[start_id:start_id+batch_size] = result[2]
-    y_true[start_id:start_id+batch_size] = result[3]
-    start_id += batch_size
-
-  # Metrics
-  f1_micro = f1_score(y_true, y_pred, average='micro')
-  prog.print_eval('micro_f1', f1_micro)
-  acc = accuracy_score(y_true, y_pred)
-  prog.print_eval('acc', acc)
-  f1_conll = conll_data.conll_f1_score(y_pred)
-  prog.print_eval('con_f1', f1_conll)
-  return f1_micro, f1_conll, acc
 
 def language_model_class_loss():
   """ Try all label conditioning for eval dataset
@@ -237,8 +202,8 @@ def train(params):
   print('-' * 79)
   tf.reset_default_graph() # reset the graph for each trial
   batch_size = params['batch_size']
-  num_batches_train = len(x_train_enc)//batch_size+(len(x_train_enc)%batch_size>0)
-  num_batches_test = len(x_test_enc)//batch_size+(len(x_test_enc)%batch_size>0)
+  num_batches_train = train_set.size()//batch_size+(train_set.size()%batch_size>0)
+  num_batches_val = val_set.size()//batch_size+(val_set.size()%batch_size>0)
   prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=30)
   met = Metrics()
   cb = Callback(params['early_stop_epoch'], met, prog)
@@ -260,13 +225,11 @@ def train(params):
     tf.global_variables_initializer().run()
     for epoch in range(params['nb_epochs']):
       prog.epoch_start()
-      train_one_epoch(sess, model, params['keep_prob'], batch_size,
-                                                      num_batches_train, prog)
+      train_one_epoch(sess, train_set, model, params['keep_prob'],
+                                          batch_size, num_batches_train, prog)
       prog.print_cust('|| val ')
       met.f1_micro, met.f1, met.accuracy = classification_f1(
-                          sess, model, batch_size, num_batches_test, prog)
-      # test_set_decoder_loss(sess, model, batch_size, num_batches_test, prog)
-      # test_set_classification_loss()
+                          sess, val_set, model, batch_size, num_batches_val, prog)
       if cb.early_stop() == True: break
       prog.epoch_end()
     prog.epoch_end()

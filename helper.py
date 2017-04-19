@@ -85,6 +85,10 @@ class Data():
     """ Sequence length for decoder input """
     return np.sign(self._x[1])
 
+  def size(self):
+    """ Samples in dataset """
+    return len(self.x[0])
+
 class MiniData():
   """ Inherits Data properties indirectly.
   Allows Data object properties to be automatically indexed. If the property
@@ -99,10 +103,10 @@ class MiniData():
     """ Returns sliced property from data object """
     return self.data.__getattribute__(name)[self.indices]
 
-def make_batches(self, data, batch_size, num_batches, shuffle=True):
+def make_batches(data, batch_size, num_batches, shuffle=True):
   """ Yields the data object with all properties sliced """
-  size = len(self.encoder_input)
-  indices = np.arange(0, size)
+  data_size = len(data.encoder_input)
+  indices = np.arange(0, data_size)
   if shuffle: np.random.shuffle(indices)
   for batch_num in range(num_batches):
     start_index = batch_num * batch_size
@@ -370,8 +374,8 @@ class Preprocess():
     vocab = {x: i for i, x in enumerate(inv_vocab)}
     return vocab, inv_vocab
 
-  def conll_f1_score(self, predictions):
-    self.save_to_conll_format('tmp.json', predictions, self.val_disc_list)
+  def conll_f1_score(self, predictions, orig_disc):
+    self.save_to_conll_format('tmp.json', predictions, orig_disc)
     precision, recall, f1 = f1_non_explicit('tmp.json', 'data/dev.json')
     return f1
 
