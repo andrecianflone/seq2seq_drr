@@ -44,7 +44,7 @@ class Progress():
     bars_empty = self.bar_length - bars_full
     print("| [{}{}] ".format(u"\u2586"*bars_full, '-'*bars_empty),end=end)
 
-def make_batches(data, batch_size, num_batches,shuffle=True):
+def make_batches_legacy(data, batch_size, num_batches,shuffle=True):
   """ Batches the passed data
   Args:
     data       : a list of numpy arrays

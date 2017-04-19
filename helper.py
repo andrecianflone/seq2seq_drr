@@ -13,12 +13,36 @@ dtype='int32' # default numpy int dtype
 # TODO : checkout tf.contrib preprocessing for tokenization
 class Data():
   def __init__(self, path_source):
-    self.path_source = path_source
+    self._path_source = path_source
     self._x = None
-    self.classes = None
+    self._classes = None
     self._seq_len = [] # list of tuple(len_arg1, len_arg2)
-    self.decoder_target = []
+    self._decoder_target = []
     self.orig_disc = [] # the original discourse, list from json to dict
+
+  @property
+  def path_source(self):
+    return self._path_source
+
+  @path_source.setter
+  def path_source(self, value):
+    self._path_source = value
+
+  @property
+  def decoder_target(self):
+    return self._decoder_target
+
+  @decoder_target.setter
+  def decoder_target(self, value):
+    self._decoder_target = value
+
+  @property
+  def classes(self):
+    return self._classes
+
+  @classes.setter
+  def classes(self, value):
+    self._classes = value
 
   @property
   def seq_len(self):
@@ -60,6 +84,31 @@ class Data():
   def decoder_mask(self):
     """ Sequence length for decoder input """
     return np.sign(self._x[1])
+
+class MiniData():
+  """ Inherits Data properties indirectly.
+  Allows Data object properties to be automatically indexed. If the property
+  is not indexable, returns error.
+  """
+  def __init__(self, data, indices):
+    """  data must be a Data object """
+    self.data = data
+    self.indices = indices
+
+  def __getattr__(self, name):
+    """ Returns sliced property from data object """
+    return self.data.__getattribute__(name)[self.indices]
+
+def make_batches(self, data, batch_size, num_batches, shuffle=True):
+  """ Yields the data object with all properties sliced """
+  size = len(self.encoder_input)
+  indices = np.arange(0, size)
+  if shuffle: np.random.shuffle(indices)
+  for batch_num in range(num_batches):
+    start_index = batch_num * batch_size
+    end_index = min((batch_num + 1) * batch_size, data_size)
+    new_indices = indices[start_index:end_index]
+    yield MiniData(data, new_indices)
 
 class Preprocess():
   def __init__(self,

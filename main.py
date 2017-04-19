@@ -11,13 +11,13 @@ For hyperparameter search, call as this example:
 python main.py --trials 2 --search_param cell_units --file_save trials/cell_units
 -----------
 """
-from helper import Preprocess
+from helper import Preprocess, Data, MiniData, make_batches
 from embeddings import Embeddings
 import tensorflow as tf
 from sklearn.metrics import f1_score, accuracy_score
 import numpy as np
 from enc_dec import BasicEncDec
-from utils import Progress, make_batches, Metrics, Callback
+from utils import Progress, Metrics, Callback
 import sys
 from six.moves import cPickle as pickle
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
