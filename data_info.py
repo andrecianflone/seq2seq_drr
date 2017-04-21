@@ -70,7 +70,9 @@ def print_info(filepath, explicit=None, plot=False):
     plot_arg_len(arg_len)
 
 if __name__ == "__main__":
-  print_info('data/orig_dev.json', False)
-  print_info('data/orig_train.json', False)
+  print_info('data/train.json', False)
+  print_info('data/dev.json', False)
+  print_info('data/test.json', False)
+  print_info('data/blind.json', False)
 
 

@@ -22,6 +22,7 @@ class Data():
 
   @property
   def path_source(self):
+    """ Path of original json file """
     return self._path_source
 
   @path_source.setter
@@ -156,7 +157,7 @@ class Preprocess():
     self.data_collect = {'training_set': Data(training_set)}
     if prep_validation_set: self.data_collect['validation_set'] = Data(validation_set)
     if test_set: self.data_collect['test_set'] = Data(test_set)
-    if blind_set: self.data_collect['blind'] = Data(blind_set)
+    if blind_set: self.data_collect['blind_set'] = Data(blind_set)
 
     # Tokenize and pad
     for data in self.data_collect.values():
@@ -374,9 +375,9 @@ class Preprocess():
     vocab = {x: i for i, x in enumerate(inv_vocab)}
     return vocab, inv_vocab
 
-  def conll_f1_score(self, predictions, orig_disc):
+  def conll_f1_score(self, predictions, orig_disc, gold_path):
     self.save_to_conll_format('tmp.json', predictions, orig_disc)
-    precision, recall, f1 = f1_non_explicit('tmp.json', 'data/dev.json')
+    precision, recall, f1 = f1_non_explicit('tmp.json', gold_path)
     return f1
 
   def save_to_conll_format(self, path, predictions, discourse, append_file=False):

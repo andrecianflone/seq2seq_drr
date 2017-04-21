@@ -73,6 +73,8 @@ class Metrics():
     self._f1_micro = 0
     self._accuracy = 0
     self._f1 = 0
+    self._test_f1 = 0
+    self._blind_f1 = 0
 
     # Updated when best
     self._f1_micro_best = 0
@@ -137,6 +139,28 @@ class Metrics():
   def f1_best_epoch(self):
     """ Epoch which achieved best F1 """
     return self._f1_best_epoch
+
+  # Test F1
+  @property
+  def test_f1(self):
+    """ Test f1 score at best epoch """
+    return self._test_f1
+
+  @test_f1.setter
+  def test_f1(self, value):
+    if self._f1_best_epoch == self.current_epoch:
+      self._test_f1 = value
+
+  # Blind F1
+  @property
+  def blind_f1(self):
+    """ Blind f1 score """
+    return self._blind_f1
+
+  @blind_f1.setter
+  def blind_f1(self, value):
+    if self._f1_best_epoch == self.current_epoch:
+      self._blind_f1 = value
 
 class Callback():
   """ Monitor training """
