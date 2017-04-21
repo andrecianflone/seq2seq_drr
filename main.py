@@ -42,9 +42,11 @@ conll_data = Preprocess(
             bos_tag="<bos>",
             eos_tag="<eos>")
 
-# Data sets
+# Data sets as Data objects
 train_set = conll_data.data_collect['training_set']
 val_set = conll_data.data_collect['validation_set']
+test_set = conll_data.data_collect['test_set']
+blind_set = conll_data.data_collect['blind_set']
 
 # Word embeddings
 emb = Embeddings(conll_data.vocab, conll_data.inv_vocab, random_init_unknown=True)
@@ -78,13 +80,14 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shu
     yield result
 
 def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches, prog):
+  """ Train 'model' using 'data' for a single epoch """
   fetch = [model.class_optimizer, model.class_cost]
   batch_results = call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shuffle=True)
   for result in batch_results:
     loss = result[1]
     prog.print_train(loss)
 
-def classification_f1(sess, data, model, batch_size, num_batches_test, prog):
+def classification_f1(sess, data, model, batch_size, num_batches_test):
   """ Get the total loss for the entire batch """
   fetch = [model.batch_size, model.class_cost, model.y_pred, model.y_true]
   y_pred = np.zeros(data.size())
@@ -100,11 +103,8 @@ def classification_f1(sess, data, model, batch_size, num_batches_test, prog):
 
   # Metrics
   f1_micro = f1_score(y_true, y_pred, average='micro')
-  prog.print_eval('micro_f1', f1_micro)
   acc = accuracy_score(y_true, y_pred)
-  prog.print_eval('acc', acc)
-  f1_conll = conll_data.conll_f1_score(y_pred, data.orig_disc)
-  prog.print_eval('con_f1', f1_conll)
+  f1_conll = conll_data.conll_f1_score(y_pred, data.orig_disc, data.path_source)
   return f1_micro, f1_conll, acc
 
 def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
@@ -172,8 +172,8 @@ def language_model_class_loss():
 # Default params
 hyperparams = {
   'batch_size'       : 32,             # training batch size
-  'cell_units'       : 32,             # hidden layer size
-  'dec_out_units'    : 32,             # output from decoder
+  'cell_units'       : 200,             # hidden layer size
+  'dec_out_units'    : 100,             # output from decoder
   'num_layers'       : 2,              # not used
   'keep_prob'        : 0.5,            # dropout keep probability
   'nb_epochs'        : 70,             # max training epochs
@@ -204,7 +204,9 @@ def train(params):
   batch_size = params['batch_size']
   num_batches_train = train_set.size()//batch_size+(train_set.size()%batch_size>0)
   num_batches_val = val_set.size()//batch_size+(val_set.size()%batch_size>0)
-  prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=30)
+  num_batches_test = test_set.size()//batch_size+(test_set.size()%batch_size>0)
+  num_batches_blind = blind_set.size()//batch_size+(blind_set.size()%batch_size>0)
+  prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=10)
   met = Metrics()
   cb = Callback(params['early_stop_epoch'], met, prog)
   pprint(params)
@@ -225,24 +227,49 @@ def train(params):
     tf.global_variables_initializer().run()
     for epoch in range(params['nb_epochs']):
       prog.epoch_start()
+
+      # Training set
       train_one_epoch(sess, train_set, model, params['keep_prob'],
                                           batch_size, num_batches_train, prog)
+      # Validation Set
       prog.print_cust('|| val ')
       met.f1_micro, met.f1, met.accuracy = classification_f1(
-                          sess, val_set, model, batch_size, num_batches_val, prog)
+                          sess, val_set, model, batch_size, num_batches_val)
+
+      prog.print_eval('acc', met.accuracy)
+      prog.print_eval('cf1', met.f1)
+
+      # Test Set
+      prog.print_cust('|| test ')
+      _ , test_f1, test_acc  = classification_f1(
+                          sess, test_set, model, batch_size, num_batches_val)
+      met.test_f1 = test_f1
+      prog.print_eval('acc', test_acc)
+      prog.print_eval('cf1', test_f1)
+
+      # Blind Set
+      prog.print_cust('|| blind ')
+      _ , blind_f1, blind_acc = classification_f1(
+                          sess, blind_set, model, batch_size, num_batches_val)
+      met.blind_f1 = blind_f1
+      prog.print_eval('acc', blind_acc)
+      prog.print_eval('cf1', blind_f1)
+
       if cb.early_stop() == True: break
       prog.epoch_end()
     prog.epoch_end()
 
   # Results of this trial
   results = {
-      'loss'          : -met.f1_best, # required by hyperopt
-      'status'        : STATUS_OK, # required by hyperopt
-      'f1_micro_best' : met.f1_micro_best,
-      'accuracy_best' : met.accuracy_best,
-      'f1_best'       : met.f1_best,
-      'f1_best_epoch' : met.f1_best_epoch,
-      'params'        : params
+      'loss'              : -met.f1_best, # required by hyperopt
+      'status'            : STATUS_OK, # required by hyperopt
+      'f1_micro_best'     : met.f1_micro_best,
+      'accuracy_best'     : met.accuracy_best,
+      'f1_best'           : met.f1_best,
+      'test_f1_best_val'  : met.test_f1,
+      'blind_f1_best_val' : met.blind_f1,
+      'f1_best_epoch'     : met.f1_best_epoch,
+      'params'            : params
   }
   # dump results
   if 'file_save' in params:
@@ -270,3 +297,4 @@ if __name__ == "__main__":
   print('best: ')
   print(best)
   pickle.dump(trials, open("trials.p","wb"))
+
