@@ -172,8 +172,8 @@ def language_model_class_loss():
 # Default params
 hyperparams = {
   'batch_size'       : 32,             # training batch size
-  'cell_units'       : 200,             # hidden layer size
-  'dec_out_units'    : 100,             # output from decoder
+  'cell_units'       : 64,             # hidden layer size
+  'dec_out_units'    : 64,             # output from decoder
   'num_layers'       : 2,              # not used
   'keep_prob'        : 0.5,            # dropout keep probability
   'nb_epochs'        : 70,             # max training epochs

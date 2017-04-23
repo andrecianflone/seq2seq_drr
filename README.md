@@ -31,4 +31,4 @@ Test        | 23
 
 Followed by [CoNLL](http://www.aclweb.org/anthology/K/K16/K16-2.pdf#page=11), [Wand and Lan, 2016](https://www.aclweb.org/anthology/K/K16/K16-2.pdf#page=43)
 
-[Chen et al, 2016] : https://www.aclweb.org/anthology/P/P16/P16-1163.pdf
+[Chen et al, 2016]: https://www.aclweb.org/anthology/P/P16/P16-1163.pdf

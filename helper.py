@@ -121,7 +121,7 @@ class Preprocess():
         maxlen, # maximum total length of input
         mapping_path='data/map_proper_conll.json',
         split_input=True, # boolean, split input into separate numpy arrays
-        training_set="data/train.json",
+        training_set="data/train_all.json",
         validation_set="data/dev.json",
         test_set="data/test.json",
         blind_set="data/blind.json",
