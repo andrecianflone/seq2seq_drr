@@ -23,11 +23,11 @@ Followed by, for example: [Zhang et al 2015],[Chen et al, 2016]
 
 **The CoNLL breakdown, recommended by the original PDTB 2.0 corpus:**
 
-Set         | WSJ sections
-------------|
-Training    | 2-21
-Development | 22
-Test        | 23
+| Set         | WSJ sections |
+|-------------|--------------|
+| Training    | 2-21         |
+| Development | 22           |
+| Test        | 23           |
 
 Followed by [CoNLL](http://www.aclweb.org/anthology/K/K16/K16-2.pdf#page=11), [Wang and Lan, 2016](https://www.aclweb.org/anthology/K/K16/K16-2.pdf#page=43)
 
