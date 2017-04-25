@@ -24,7 +24,7 @@ def scan_folder(directory, output_file):
         print("*****Process terminated*****")
         sys.exit()
 
-def make_data_set(pdtb_json, mapping):
+def make_data_set(pdtb, mapping):
   """ From the master json, create datasets of positive/negative
   Note:
   - Breakdown according to Pitler et al, 2009
@@ -37,23 +37,68 @@ def make_data_set(pdtb_json, mapping):
   train_range = range(2, 20+1)
   dev_range = range(0, 1+1)
   test_range = range(21, 22+1)
+  mapping = _dict_from_json(mapping)
+  relations = set(mapping.values())
+  pdtb = _list_of_dict(pdtb)
 
   # Only these types
   types = ['Implicit', 'EntRel']
+  train_data = _get_data(pdtb, types, mapping, train_range, relations, True)
+
+def _get_data(pdtb, types, mapping, rng, relations, equal_negative=True):
+  """ Returns a json of positive and negative """
+  final_set = []
+  for relation in relations:
+    true_set = get_true(pdtb, relation, rng, types, mapping)
+    final_set.append(true_set)
 
 def get_true(pdtb, relation, sections, types, mapping):
   """ Returns all true of relation, withing section range, or types
   Args:
-    pdtb: full PDTB as json
+    pdtb: full PDTB as list of dict
     relation: Top level relation, Example "Temporal"
     sections: a range of sections
     types: such as Implicit
     mapping: dictionary, map to this relation first
   """
+  data_set = []
+  for disc in pdtb:
+    # Skip if not valid type
+    tp = disc['Type']
+    if tp not in types: continue
+
+    # Skip if not section we want
+    section = int(disc['Section'])
+    if section not in sections: continue
+
+    # Add the EntRel as sense
+    if disc['Type'] == 'EntRel': disc['Sense'] = ['EntRel']
+
+    # Skip if not relation we want
+    rel = mapping[disc['Sense'][0]] # map the relation
+    if rel not in relation: continue
+    disc['Sense'] = rel
+
+    data_set.append(disc)
+  return data_set
 
 ########################################################
 # HELPERS
 ########################################################
+
+def _list_of_dict(file_path):
+  dataset = []
+  with codecs.open(file_path, encoding='utf-8') as f:
+    for line in f:
+      j = json.loads(line)
+      dataset.append(j)
+  return dataset
+
+def _dict_from_json(file_path):
+  """ Load dictionary from a json file """
+  with codecs.open(file_path, encoding='utf-8') as f:
+    dictionary = json.load(f)
+  return dictionary
 
 def _append_json_file(data_dict, file_path):
   """ Appends json file with data dictionary """
@@ -128,8 +173,10 @@ def _valid_list(*args):
 # MAIN
 ########################################################
 if __name__ == "__main__":
-  print('Converting PDTB pipe files into single JSON')
-  cur_dir = os.path.dirname(os.path.realpath(__file__))
-  output = 'new_relations.json'
-  scan_folder(cur_dir, output)
-  print('Done! Relations saved to: ', output)
+  # print('Converting PDTB pipe files into single JSON')
+  # cur_dir = os.path.dirname(os.path.realpath(__file__))
+  # output = 'new_relations.json'
+  # scan_folder(cur_dir, output)
+  # print('Done! Relations saved to: ', output)
+
+  make_data_set('data/all_pdtb.json', 'data/map_pdtb_top.json')
