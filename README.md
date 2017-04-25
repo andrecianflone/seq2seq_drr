@@ -12,13 +12,13 @@ DRR with encoder/decoder type model
 
 **The Pitler et al 2009 breakdown:**
 
-| Set         | WSJ sections |
-|-------------|--------------|
-| Training    | 2-20         |
-| Development | 0-1          |
-| Test        | 21-22        |
+| Set         | WSJ sections       |
+|-------------|--------------------|
+| Training    | 2-20               |
+| Development | 0-1, can use 23-24 |
+| Test        | 21-22              |
 
-Followed by, for example: [Zhang et al 2015],[Chen et al, 2016]
+Followed by, for example: [Zhang et al 2015], [Chen et al, 2016], [Ji and Eisensteing, 2015]
 
 
 **The CoNLL breakdown, recommended by the original PDTB 2.0 corpus:**
@@ -40,4 +40,4 @@ For higher level classification, such as in [Chen et al, 2016], they experiment 
 [Chen et al, 2016]: https://www.aclweb.org/anthology/P/P16/P16-1163.pdf
 [Zhang et al 2015]: http://www.anthology.aclweb.org/D/D15/D15-1266.pdf
 [conll]: http://www.aclweb.org/anthology/K/K16/K16-2.pdf#page=26
-
+[Ji and Eisensteing, 2015]: https://arxiv.org/pdf/1411.6699.pdf
