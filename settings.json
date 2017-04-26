@@ -1,20 +1,32 @@
-
-hyperparams = {
-  'batch_size'       : 32,             # training batch size
-  'cell_units'       : 64,             # hidden layer size
-  'dec_out_units'    : 64,             # output from decoder
-  'num_layers'       : 2,              # not used
-  'keep_prob'        : 0.5,            # dropout keep probability
-  'nb_epochs'        : 70,             # max training epochs
-  'early_stop_epoch' : 10,             # stop after n epochs w/o improvement on val set
-  'bidirectional'    : True,
-  'attention'        : True
-}
-
-search_space = {
-  'batch_size'    : hp.choice('batch_size', range(32, 128)),# training batch size
-  'cell_units'    : hp.choice('cell_units', range(4, 500)), # hidden layer size
-  'dec_out_units' : hp.choice('dec_out_units', range(4, 500)), # output from decoder
-  'num_layers'    : hp.choice('num_layers', range(1, 10)),  # not used
-  'keep_prob'     : hp.uniform('keep_prob', 0.1, 1)  # dropout keep probability
+{
+  "hyperparams" : {
+    "batch_size"       : "32",
+    "cell_units"       : "64",
+    "dec_out_units"    : "64",
+    "num_layers"       : "2",
+    "keep_prob"        : "0.5",
+    "nb_epochs"        : "70",
+    "early_stop_epoch" : "10",
+    "bidirectional"    : "True",
+    "attention"        : "True"
+  },
+  "conll" : {
+    "datasets" : {
+      "training_set"   : {"short_name":"train","path":"data/train.json"},
+      "validation_set" : {"short_name":"val","path":"data/dev.json"},
+      "test_set"       : {"short_name":"test","path":"data/test.json"},
+      "blind_set"      : {"short_name":"blind","path":"data/blind.json"}
+    },
+    "label_key" : "Sense",
+    "mapping"      : "data/map_proper_conll.json"
+  },
+  "one_v_all" : {
+    "datasets" : {
+      "training_set"   : {"short_name":"train","path":"data/one_v_all_train.json"},
+      "validation_set" : {"short_name":"train","path":"data/one_v_all_dev.json"},
+      "test_set"       : {"short_name":"train","path":"data/one_v_all_test.json"}
+    },
+    "label_key" : "Class",
+    "mapping"      : "data/map_one_v_all.json"
+  }
 }
