@@ -25,7 +25,7 @@ def scan_folder(directory, output_file):
         print("*****Process terminated*****")
         sys.exit()
 
-def make_data_set(pdtb, mapping):
+def make_data_set(pdtb, mapping, rng, equal_negative=True):
   """ From the master json, create datasets of positive/negative
   Note:
   - Breakdown according to Pitler et al, 2009
@@ -35,20 +35,15 @@ def make_data_set(pdtb, mapping):
   - Only for Implicit and EntRel
   - NoRel, AltLex and Explicit ignored
   """
-  train_range = range(2, 20+1)
-  dev_range = range(0, 1+1)
-  test_range = range(21, 22+1)
+
   mapping = _dict_from_json(mapping)
   relations = set(mapping.values())
   pdtb = _list_of_dict(pdtb)
 
   # Only these types
   types = ['Implicit', 'EntRel']
-  train_data = _get_data(pdtb, types, mapping, train_range, relations, True)
-
-def _get_data(pdtb, types, mapping, rng, relations, equal_negative=True):
-  """ Returns a json of positive and negative """
   final_set = []
+
   for relation in relations:
     # Get positive set
     positive_set = _extract_disc(\
@@ -56,15 +51,19 @@ def _get_data(pdtb, types, mapping, rng, relations, equal_negative=True):
     pos_ids = [disc['ID'] for disc in positive_set]
 
     # Get negative set
+    neg_relations = relations.copy()
+    neg_relations.remove(relation)
     negative_set = _extract_disc(\
-                      pdtb, relation, rng, types, mapping, 'negative', pos_ids)
+                      pdtb, neg_relations, rng, types, mapping, 'negative', pos_ids)
 
-    # Balance the sets 50/50
+    # Maybe balance the sets 50/50 (if training set)
     if equal_negative:
       positive_set, negative_set = _rebalance_sets(positive_set, negative_set)
 
-    final_set.append(positive_set)
-    final_set.append(negative_set)
+    final_set.extend(positive_set)
+    final_set.extend(negative_set)
+
+  return final_set
 
 def _rebalance_sets(positive_set, negative_set):
   """ The biggest set is reduced by random sampling """
@@ -103,17 +102,31 @@ def _extract_disc(pdtb, relation, sections, types, mapping, new_label,
     # Add the EntRel as sense
     if disc['Type'] == 'EntRel': disc['Sense'] = ['EntRel']
 
-    # Skip if not relation we want
-    rel = mapping[disc['Sense'][0]] # map the relation
-    if rel not in relation: continue
-    disc['Sense'] = rel
+    # Skip if not the relation we want
+    # Relation may be in a list or just a string (since remapped)
+    if type(disc['Sense']) == list:
+      if len(disc['Sense']) > 1: # for disc with two Senses
+        rel1 = mapping[disc['Sense'][0]]
+        rel2 = mapping[disc['Sense'][1]]
+        if rel1 not in relation and rel2 not in relation: continue
+        if rel1 in relation:
+          rel = rel1
+        if rel2 in relation:
+          rel = rel2
+      if len(disc['Sense']) == 1: # for disc with single Sense
+        rel = mapping[disc['Sense'][0]]
+        if rel not in relation: continue
+    else: # if not a list
+      rel = mapping[disc['Sense']]
+      if rel not in relation: continue
+    disc['Relation'] = rel # new key
 
     # Check if not in the exclusion set
     if exclusion_set is not None:
       disc_id = disc['ID']
       if disc_id in exclusion_set:continue
 
-    # Add the new label
+    # Add the new label Key
     disc['Class'] = new_label
 
     data_set.append(disc)
@@ -136,6 +149,14 @@ def _dict_from_json(file_path):
   with codecs.open(file_path, encoding='utf-8') as f:
     dictionary = json.load(f)
   return dictionary
+
+def dict_to_json(disc_list, file_path):
+  if os.path.isfile(file_path):
+    os.remove(file_path)
+  with codecs.open(file_path, mode='a', encoding='utf8') as pdtb:
+    for disc in disc_list:
+      json.dump(disc, pdtb) # append to end of json file
+      pdtb.write('\n') # new line
 
 def _append_json_file(data_dict, file_path):
   """ Appends json file with data dictionary """
@@ -216,4 +237,21 @@ if __name__ == "__main__":
   # scan_folder(cur_dir, output)
   # print('Done! Relations saved to: ', output)
 
-  make_data_set('data/all_pdtb.json', 'data/map_pdtb_top.json')
+  print('Getting training set')
+  train_range = range(2, 20+1)
+  train_data = make_data_set('data/all_pdtb.json', 'data/map_pdtb_top.json', train_range, True)
+  dict_to_json(train_data, 'data/one_v_all_train.json')
+
+  print('Getting dev set')
+  dev_range = range(0, 1+1)
+  dev_data = make_data_set('data/all_pdtb.json', 'data/map_pdtb_top.json', dev_range, False)
+  dict_to_json(dev_data, 'data/one_v_all_dev.json')
+
+  print('Getting test set')
+  test_range = range(21, 22+1)
+  test_data = make_data_set('data/all_pdtb.json', 'data/map_pdtb_top.json', test_range, False)
+  dict_to_json(test_data, 'data/one_v_all_test.json')
+
+
+
+
