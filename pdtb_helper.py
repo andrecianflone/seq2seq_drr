@@ -239,17 +239,20 @@ if __name__ == "__main__":
 
   print('Getting training set')
   train_range = range(2, 20+1)
-  train_data = make_data_set('data/all_pdtb.json', 'data/map_pdtb_top.json', train_range, True)
+  train_data = make_data_set(\
+            'data/all_pdtb.json', 'data/map_pdtb_top.json', train_range, True)
   dict_to_json(train_data, 'data/one_v_all_train.json')
 
   print('Getting dev set')
   dev_range = range(0, 1+1)
-  dev_data = make_data_set('data/all_pdtb.json', 'data/map_pdtb_top.json', dev_range, False)
+  dev_data = make_data_set(\
+              'data/all_pdtb.json', 'data/map_pdtb_top.json', dev_range, False)
   dict_to_json(dev_data, 'data/one_v_all_dev.json')
 
   print('Getting test set')
   test_range = range(21, 22+1)
-  test_data = make_data_set('data/all_pdtb.json', 'data/map_pdtb_top.json', test_range, False)
+  test_data = make_data_set(\
+            'data/all_pdtb.json', 'data/map_pdtb_top.json', test_range, False)
   dict_to_json(test_data, 'data/one_v_all_test.json')
 
 

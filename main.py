@@ -32,21 +32,20 @@ import argparse
 max_arg_len = 60              # max length of each arg
 maxlen      = max_arg_len * 2 # max num of tokens per sample
 
-conll_data = Preprocess(
+data_class = Preprocess(
+            dataset_name='conll',
             max_arg_len=max_arg_len,
             maxlen=maxlen,
             split_input=True,
-            prep_validation_set=True,
-            prep_test_set=True,
-            prep_blind_set=True,
             bos_tag="<bos>",
             eos_tag="<eos>")
 
 # Data sets as Data objects
-train_set = conll_data.data_collect['training_set']
-val_set = conll_data.data_collect['validation_set']
-test_set = conll_data.data_collect['test_set']
-blind_set = conll_data.data_collect['blind_set']
+dataset_dict = data_class.data_collect
+# train_set = conll_data.data_collect['training_set']
+# val_set   = conll_data.data_collect['validation_set']
+# test_set  = conll_data.data_collect['test_set']
+# blind_set = conll_data.data_collect['blind_set']
 
 # Word embeddings
 emb = Embeddings(conll_data.vocab, conll_data.inv_vocab, random_init_unknown=True)
@@ -202,11 +201,8 @@ def train(params):
   print('-' * 79)
   tf.reset_default_graph() # reset the graph for each trial
   batch_size = params['batch_size']
-  num_batches_train = train_set.size()//batch_size+(train_set.size()%batch_size>0)
-  num_batches_val = val_set.size()//batch_size+(val_set.size()%batch_size>0)
-  num_batches_test = test_set.size()//batch_size+(test_set.size()%batch_size>0)
-  num_batches_blind = blind_set.size()//batch_size+(blind_set.size()%batch_size>0)
-  prog = Progress(batches=num_batches_train, progress_bar=True, bar_length=10)
+  train_set = dataset_dict['training_set']
+  prog = Progress(batches=train_set.num_batches, progress_bar=True, bar_length=10)
   met = Metrics()
   cb = Callback(params['early_stop_epoch'], met, prog)
   pprint(params)
@@ -231,29 +227,34 @@ def train(params):
       # Training set
       train_one_epoch(sess, train_set, model, params['keep_prob'],
                                           batch_size, num_batches_train, prog)
-      # Validation Set
-      prog.print_cust('|| val ')
-      met.f1_micro, met.f1, met.accuracy = classification_f1(
-                          sess, val_set, model, batch_size, num_batches_val)
 
-      prog.print_eval('acc', met.accuracy)
-      prog.print_eval('cf1', met.f1)
+      for k, dataset in dataset_dict.items():
+        if k == "training_set": continue # skip training, already done
 
-      # Test Set
-      prog.print_cust('|| test ')
-      _ , test_f1, test_acc  = classification_f1(
-                          sess, test_set, model, batch_size, num_batches_val)
-      met.test_f1 = test_f1
-      prog.print_eval('acc', test_acc)
-      prog.print_eval('cf1', test_f1)
+        # Validation Set
+        short_name = dataset.short_name
+        prog.print_cust('|| {} '.format(short_name))
+        met.f1, met.accuracy = classification_f1(
+                            sess, val_set, model, batch_size, num_batches_val)
 
-      # Blind Set
-      prog.print_cust('|| blind ')
-      _ , blind_f1, blind_acc = classification_f1(
-                          sess, blind_set, model, batch_size, num_batches_val)
-      met.blind_f1 = blind_f1
-      prog.print_eval('acc', blind_acc)
-      prog.print_eval('cf1', blind_f1)
+        prog.print_eval('acc', met.accuracy)
+        prog.print_eval('cf1', met.f1)
+
+        # Test Set
+        prog.print_cust('|| test ')
+        _ , test_f1, test_acc  = classification_f1(
+                            sess, test_set, model, batch_size, num_batches_val)
+        met.test_f1 = test_f1
+        prog.print_eval('acc', test_acc)
+        prog.print_eval('cf1', test_f1)
+
+        # Blind Set
+        prog.print_cust('|| blind ')
+        _ , blind_f1, blind_acc = classification_f1(
+                            sess, blind_set, model, batch_size, num_batches_blind)
+        met.blind_f1 = blind_f1
+        prog.print_eval('acc', blind_acc)
+        prog.print_eval('cf1', blind_f1)
 
       if cb.early_stop() == True: break
       prog.epoch_end()

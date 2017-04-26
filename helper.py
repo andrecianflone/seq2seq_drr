@@ -12,7 +12,8 @@ dtype='int32' # default numpy int dtype
 
 # TODO : checkout tf.contrib preprocessing for tokenization
 class Data():
-  def __init__(self, path_source):
+  def __init__(self, short_name, path_source):
+    self.short_name = short_name
     self._path_source = path_source
     self._x = None
     self._classes = None
@@ -90,6 +91,10 @@ class Data():
     """ Samples in dataset """
     return len(self.x[0])
 
+  def num_batches(self, batch_size):
+    return self.size()//batch_size+(self.size()%batch_size>0)
+
+
 class MiniData():
   """ Inherits Data properties indirectly.
   Allows Data object properties to be automatically indexed. If the property
@@ -117,22 +122,20 @@ def make_batches(data, batch_size, num_batches, shuffle=True):
 
 class Preprocess():
   def __init__(self,
+        dataset_name, # which dataset from settings file
         max_arg_len, # max length of each argument
         maxlen, # maximum total length of input
-        mapping_path='data/map_proper_conll.json',
         split_input=True, # boolean, split input into separate numpy arrays
-        training_set="data/train_all.json",
-        validation_set="data/dev.json",
-        test_set="data/test.json",
-        blind_set="data/blind.json",
-        prep_validation_set=True,
-        prep_test_set=True,
-        prep_blind_set=True,
         decoder_targets=False, # second arg without bos
         bos_tag = None, # beginning of sequence tag
         eos_tag = None, # end of sequence tag
         vocab=None, # If none, will create the vocab
         inv_vocab=None): # If none, generates inverse vocab
+
+    # Settings file
+    with codecs.open('settings.json', encoding='utf-8') as f:
+      settings = json.load(f)
+    dataset=settings[dataset_name]
 
     # self.train_file   = training_set
     # self.val_file     = validation_set
@@ -146,6 +149,7 @@ class Preprocess():
     self.maxlen       = maxlen
     self.split_input  = split_input
     # Sense mapping dict, or list of dicts
+    mapping_path=dataset["mapping"]
     self.mapping_sense    = self.get_output_mapping(mapping_path)
     self.sense_to_one_hot = self.get_one_hot_dicts(self.mapping_sense)
     self.int_to_sense     = self.get_int_to_sense_dict(self.sense_to_one_hot)
@@ -153,16 +157,17 @@ class Preprocess():
     # array shape [samples, 1], or [samples,2] if split
     self.weights_cross_entropy = None
 
+
     # Set what to process
-    self.data_collect = {'training_set': Data(training_set)}
-    if prep_validation_set: self.data_collect['validation_set'] = Data(validation_set)
-    if test_set: self.data_collect['test_set'] = Data(test_set)
-    if blind_set: self.data_collect['blind_set'] = Data(blind_set)
+    label_key = dataset["label_key"]
+    self.data_collect = {}
+    for k, v in dataset['datasets'].items():
+      self.data_collect[k] = Data(v["short_name"], v["path"])
 
     # Tokenize and pad
     for data in self.data_collect.values():
-      data.x, data.classes, data.seq_len, data.decoder_target, data.orig_disc= \
-          self.load_from_file(data.path_source, self.max_arg_len)
+      data.x, data.classes, data.seq_len, data.decoder_target, data.orig_disc=\
+            self.load_from_file(data.path_source, self.max_arg_len, label_key)
 
       # Array with elements arg1 length, arg2 length
       data.seq_len = np.array(data.seq_len, dtype=dtype)
@@ -226,6 +231,7 @@ class Preprocess():
 
   def get_output_mapping(self, mapping_path):
     """ Returns single dict, or list of dicts of mapping"""
+
     if type(mapping_path) is list:
       maps = []
       for path in mapping_path:
@@ -312,7 +318,7 @@ class Preprocess():
         x_new.append(sample)
     return x_new
 
-  def load_from_file(self, path, max_arg_len):
+  def load_from_file(self, path, max_arg_len, label_name):
     """ Parse the input
     Returns:
       x : list of tokenized discourse text
@@ -340,7 +346,10 @@ class Preprocess():
 
         arg1.extend(arg2)
         # Return original sense, mapping done later
-        label = j['Sense'][0]
+        if type(j[label_name]) == list:
+          label = j['Sense'][0]
+        else:
+          label = j[label_name]
 
         # Add sample to list of data
         x.append(arg1)

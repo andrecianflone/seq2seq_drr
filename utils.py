@@ -70,51 +70,51 @@ class Metrics():
     self.current_epoch = 0
 
     # Metrics updated at each epoch
-    self._f1_micro = 0
-    self._accuracy = 0
+    self._val_f1 = 0
+    self._val_accuracy = 0
     self._f1 = 0
     self._test_f1 = 0
     self._blind_f1 = 0
 
     # Updated when best
-    self._f1_micro_best = 0
-    self._accuracy_best = 0
+    self._val_f1_best = 0
+    self._val_accuracy_best = 0
     self._f1_best = 0
     self._f1_best_epoch = 0
 
   # F1 micro
   @property
-  def f1_micro(self):
+  def val_f1(self):
     """ Micro F1 score """
-    return self._f1_micro
+    return self._val_f1
 
-  @f1_micro.setter
-  def f1_micro(self, value):
-    self._f1_micro = value
-    if self._f1_micro >= self._f1_micro_best:
-      self._f1_micro_best = self._f1_micro
+  @val_f1.setter
+  def val_f1(self, value):
+    self._val_f1 = value
+    if self._val_f1 >= self._val_f1_best:
+      self._val_f1_best = self._val_f1
 
   @property
-  def f1_micro_best(self):
+  def val_f1_best(self):
     """ Best F1 score so far """
-    return self._f1_micro_best
+    return self._val_f1_best
 
-  # Accuracy
+  # val_accuracy
   @property
-  def accuracy(self):
+  def val_accuracy(self):
     """ Accuracy score """
-    return self._accuracy
+    return self._val_accuracy
 
-  @accuracy.setter
-  def accuracy(self, value):
-    self._accuracy = value
-    if self._accuracy >= self._accuracy_best:
-      self._accuracy_best = self._accuracy
+  @val_accuracy.setter
+  def val_accuracy(self, value):
+    self._val_accuracy = value
+    if self._val_accuracy >= self._val_accuracy_best:
+      self._val_accuracy_best = self._val_accuracy
 
   @property
-  def accuracy_best(self):
-    """ Best accuracy score so far """
-    return self._accuracy_best
+  def val_accuracy_best(self):
+    """ Best val_accuracy score so far """
+    return self._val_accuracy_best
 
   # F1
   @property
