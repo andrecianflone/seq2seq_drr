@@ -1,6 +1,7 @@
 """
 Author: Andre Cianflone
 """
+import random
 import codecs
 import os
 import re
@@ -49,10 +50,38 @@ def _get_data(pdtb, types, mapping, rng, relations, equal_negative=True):
   """ Returns a json of positive and negative """
   final_set = []
   for relation in relations:
-    true_set = get_true(pdtb, relation, rng, types, mapping)
-    final_set.append(true_set)
+    # Get positive set
+    positive_set = _extract_disc(\
+                              pdtb, relation, rng, types, mapping, 'positive')
+    pos_ids = [disc['ID'] for disc in positive_set]
 
-def get_true(pdtb, relation, sections, types, mapping):
+    # Get negative set
+    negative_set = _extract_disc(\
+                      pdtb, relation, rng, types, mapping, 'negative', pos_ids)
+
+    # Balance the sets 50/50
+    if equal_negative:
+      positive_set, negative_set = _rebalance_sets(positive_set, negative_set)
+
+    final_set.append(positive_set)
+    final_set.append(negative_set)
+
+def _rebalance_sets(positive_set, negative_set):
+  """ The biggest set is reduced by random sampling """
+  max_size = min(len(positive_set), len(negative_set))
+
+  if len(positive_set) > max_size:
+    random.shuffle(positive_set)
+    positive_set = positive_set[0:max_size]
+
+  if len(negative_set) > max_size:
+    random.shuffle(negative_set)
+    negative_set = negative_set[0:max_size]
+
+  return positive_set, negative_set
+
+def _extract_disc(pdtb, relation, sections, types, mapping, new_label,
+    exclusion_set=None):
   """ Returns all true of relation, withing section range, or types
   Args:
     pdtb: full PDTB as list of dict
@@ -78,6 +107,14 @@ def get_true(pdtb, relation, sections, types, mapping):
     rel = mapping[disc['Sense'][0]] # map the relation
     if rel not in relation: continue
     disc['Sense'] = rel
+
+    # Check if not in the exclusion set
+    if exclusion_set is not None:
+      disc_id = disc['ID']
+      if disc_id in exclusion_set:continue
+
+    # Add the new label
+    disc['Class'] = new_label
 
     data_set.append(disc)
   return data_set
