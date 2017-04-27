@@ -18,15 +18,15 @@
       "blind_set"      : {"short_name":"blind","path":"data/blind.json"}
     },
     "label_key" : "Sense",
-    "mapping"      : "data/map_proper_conll.json"
+    "mapping"   : "data/map_proper_conll.json"
   },
   "one_v_all" : {
     "datasets" : {
       "training_set"   : {"short_name":"train","path":"data/one_v_all_train.json"},
-      "validation_set" : {"short_name":"train","path":"data/one_v_all_dev.json"},
-      "test_set"       : {"short_name":"train","path":"data/one_v_all_test.json"}
+      "validation_set" : {"short_name":"val","path":"data/one_v_all_dev.json"},
+      "test_set"       : {"short_name":"test","path":"data/one_v_all_test.json"}
     },
     "label_key" : "Class",
-    "mapping"      : "data/map_one_v_all.json"
+    "mapping"   : "data/map_one_v_all.json"
   }
 }

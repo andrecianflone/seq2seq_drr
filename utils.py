@@ -66,13 +66,52 @@ def make_batches_legacy(data, batch_size, num_batches,shuffle=True):
 
 class Metrics():
   """ Keeps score of metrics during training """
-  def __init__(self):
+  def __init__(self, monitor):
+    """
+    Arg:
+      monitor: best results based on this metric
+    """
+    self.monitor = monitor
+    self.metric_best = 0
+    self.metric_current = 0
+    self._metric_dict = {}
+    self.epoch_current = 0
+    self.epoch_best = 0
+
+  def update(self, name, value):
+    """ Only save metric if best for monitored """
+    if name == self.monitor:
+      self._check_if_best(name, value)
+    else:
+      if self.epoch_current == self.epoch_best:
+        self._metric_dict[name] = value
+
+  def _check_if_best(self, name, value):
+    self.epoch_current += 1
+    self.metric_current = value
+    if value >= self.metric_best:
+      self._metric_dict[name] = value
+      self.metric_best = value
+      self.epoch_best = self.epoch_current
+      self._metric_dict['epoch_best'] = self.epoch_best
+
+  @property
+  def metric_dict(self):
+    """ Get the dictionary of metrics """
+    return self._metric_dict
+
+class Metrics_old():
+  """ Keeps score of metrics during training """
+  def __init__(self, monitor):
+    """
+    Arg:
+      monitor: best results based on this metric
+    """
     self.current_epoch = 0
 
     # Metrics updated at each epoch
     self._val_f1 = 0
     self._val_accuracy = 0
-    self._f1 = 0
     self._test_f1 = 0
     self._blind_f1 = 0
 
@@ -82,6 +121,7 @@ class Metrics():
     self._f1_best = 0
     self._f1_best_epoch = 0
 
+  # TODO: multiple scores
   # F1 micro
   @property
   def val_f1(self):
@@ -177,14 +217,14 @@ class Callback():
 
   def early_stop(self):
     """ Check if f1 is decreasing """
-    if self.metrics.f1 < self.metrics.f1_best:
+    if self.metrics.metric_current < self.metrics.metric_best:
       self.stop_count += 1
     else:
       self.stop_count = 0
 
     if self.stop_count >= self.early_stop_epoch:
       msg = "\nEarly stopping. Best f1 {} at epoch {}".format(\
-            self.metrics.f1_best, self.metrics.f1_best_epoch)
+            self.metrics.metric_best, self.metrics.epoch_best)
       self.prog.print_cust(msg)
       return True
     else:

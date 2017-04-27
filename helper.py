@@ -125,6 +125,7 @@ class Preprocess():
         dataset_name, # which dataset from settings file
         max_arg_len, # max length of each argument
         maxlen, # maximum total length of input
+        relation=None, # include only these relations
         split_input=True, # boolean, split input into separate numpy arrays
         decoder_targets=False, # second arg without bos
         bos_tag = None, # beginning of sequence tag
@@ -167,7 +168,7 @@ class Preprocess():
     # Tokenize and pad
     for data in self.data_collect.values():
       data.x, data.classes, data.seq_len, data.decoder_target, data.orig_disc=\
-            self.load_from_file(data.path_source, self.max_arg_len, label_key)
+            self.load_from_file(data.path_source, self.max_arg_len, label_key, relation)
 
       # Array with elements arg1 length, arg2 length
       data.seq_len = np.array(data.seq_len, dtype=dtype)
@@ -318,7 +319,7 @@ class Preprocess():
         x_new.append(sample)
     return x_new
 
-  def load_from_file(self, path, max_arg_len, label_name):
+  def load_from_file(self, path, max_arg_len, label_name, relation=None):
     """ Parse the input
     Returns:
       x : list of tokenized discourse text
@@ -331,6 +332,11 @@ class Preprocess():
     with codecs.open(path, encoding='utf8') as pdfile:
       for line in pdfile:
         j = json.loads(line)
+
+        # Maybe exclude this relation
+        if relation is not None:
+          if j['Relation'] != relation: continue
+
         discourse_list.append(j)
         arg1 = clean_str(j['Arg1']['RawText'])[:self.max_arg_len]
         arg2 = clean_str(j['Arg2']['RawText'])
