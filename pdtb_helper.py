@@ -59,15 +59,15 @@ def make_data_set(pdtb, mapping, rng, equal_negative=True):
 
     # Maybe balance the sets 50/50 (if training set)
     if equal_negative:
-      positive_set, negative_set = _rebalance_sets(positive_set, negative_set)
+      positive_set, negative_set = _oversample_set(positive_set, negative_set)
 
     final_set.extend(copy.deepcopy(positive_set))
     final_set.extend(copy.deepcopy(negative_set))
 
   return final_set
 
-def _rebalance_sets(positive_set, negative_set):
-  """ The biggest set is reduced by random sampling """
+def _downsample_set(positive_set, negative_set):
+  """ The smaller set is reduced by random sampling """
   max_size = min(len(positive_set), len(negative_set))
 
   if len(positive_set) > max_size:
@@ -79,6 +79,28 @@ def _rebalance_sets(positive_set, negative_set):
     negative_set = negative_set[0:max_size]
 
   return positive_set, negative_set
+
+def _oversample_set(positive_set, negative_set):
+  """ The negative set is over sampled if smaller than positive """
+  pos_size = len(positive_set)
+  neg_size = len(negative_set)
+  new_negative = negative_set[:]
+
+  # Boost negative if smaller
+  while neg_size < pos_size:
+    missing = pos_size - neg_size
+    max_add = min(missing, len(negative_set))
+    random.shuffle(negative_set)
+    negative = negative_set[0:max_add]
+    new_negative.extend(negative)
+    neg_size = len(new_negative)
+
+  # Reduce negative if bigger
+  if neg_size > pos_size:
+    random.shuffle(negative_set)
+    new_negative = negative_set[0:pos_size]
+
+  return positive_set, new_negative
 
 def _extract_disc(pdtb, relation, sections, types, mapping, new_label,
     new_relation=None, exclusion_set=None):
@@ -246,20 +268,16 @@ if __name__ == "__main__":
   train_range = range(2, 20+1)
   train_data = make_data_set(\
             'data/all_pdtb.json', 'data/map_pdtb_top.json', train_range, True)
-  dict_to_json(train_data, 'data/one_v_all_train.json')
+  dict_to_json(train_data, 'data/one_v_all_train_oversample.json')
 
-  print('Getting dev set')
-  dev_range = range(0, 1+1)
-  dev_data = make_data_set(\
-              'data/all_pdtb.json', 'data/map_pdtb_top.json', dev_range, False)
-  dict_to_json(dev_data, 'data/one_v_all_dev.json')
+  # print('Getting dev set')
+  # dev_range = range(0, 1+1)
+  # dev_data = make_data_set(\
+              # 'data/all_pdtb.json', 'data/map_pdtb_top.json', dev_range, False)
+  # dict_to_json(dev_data, 'data/one_v_all_dev.json')
 
-  print('Getting test set')
-  test_range = range(21, 22+1)
-  test_data = make_data_set(\
-            'data/all_pdtb.json', 'data/map_pdtb_top.json', test_range, False)
-  dict_to_json(test_data, 'data/one_v_all_test.json')
-
-
-
-
+  # print('Getting test set')
+  # test_range = range(21, 22+1)
+  # test_data = make_data_set(\
+            # 'data/all_pdtb.json', 'data/map_pdtb_top.json', test_range, False)
+  # dict_to_json(test_data, 'data/one_v_all_test.json')
