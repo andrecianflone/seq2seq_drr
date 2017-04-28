@@ -172,7 +172,7 @@ def language_model_class_loss():
 # Default params
 hyperparams = {
   'batch_size'       : 32,             # training batch size
-  'cell_units'       : 64,             # hidden layer size
+  'cell_units'       : 132,             # hidden layer size
   'dec_out_units'    : 64,             # output from decoder
   'num_layers'       : 2,              # not used
   'keep_prob'        : 0.3,            # dropout keep probability
@@ -184,7 +184,7 @@ hyperparams = {
 # Params configured for tuning
 search_space = {
   'batch_size'    : hp.choice('batch_size', range(32, 128)),# training batch size
-  'cell_units'    : hp.choice('cell_units', range(4, 500)), # hidden layer size
+  'cell_units'    : hp.choice('cell_units', range(4, 300)), # hidden layer size
   'dec_out_units' : hp.choice('dec_out_units', range(4, 500)), # output from decoder
   'num_layers'    : hp.choice('num_layers', range(1, 10)),  # not used
   'keep_prob'     : hp.uniform('keep_prob', 0.1, 1)  # dropout keep probability
@@ -265,15 +265,9 @@ def train(params):
 
   # Results of this trial
   results = {
-      'loss'              : -met.metrics_best, # required by hyperopt
+      'loss'              : -met.metric_best, # required by hyperopt
       'status'            : STATUS_OK, # required by hyperopt
       'metrics'           : met.metric_dict,
-      # 'f1_micro_best'     : met.f1_micro_best,
-      # 'accuracy_best'     : met.accuracy_best,
-      # 'f1_best'           : met.f1_best,
-      # 'test_f1_best_val'  : met.test_f1,
-      # 'blind_f1_best_val' : met.blind_f1,
-      # 'f1_best_epoch'     : met.f1_best_epoch,
       'params'            : params
   }
   # dump results
@@ -297,6 +291,9 @@ if __name__ == "__main__":
   if args.search_param: params[args.search_param] = search_space[args.search_param]
   # params['trials'] = trials
   if args.file_save: params['file_save'] = args.file_save
+
+  params['dataset_name'] = data_class.dataset_name
+  params['relation'] = data_class.relation
   max_evals = args.trials
   best = fmin(train, params, algo=tpe.suggest, max_evals=max_evals, trials=trials)
   print('best: ')

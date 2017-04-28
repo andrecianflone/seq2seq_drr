@@ -133,10 +133,13 @@ class Preprocess():
         vocab=None, # If none, will create the vocab
         inv_vocab=None): # If none, generates inverse vocab
 
+    self.relation = relation
+    self.dataset_name = dataset_name
+
     # Settings file
     with codecs.open('settings.json', encoding='utf-8') as f:
       settings = json.load(f)
-    dataset=settings[dataset_name]
+    dataset=settings[self.dataset_name]
 
     # self.train_file   = training_set
     # self.val_file     = validation_set
@@ -168,7 +171,7 @@ class Preprocess():
     # Tokenize and pad
     for data in self.data_collect.values():
       data.x, data.classes, data.seq_len, data.decoder_target, data.orig_disc=\
-            self.load_from_file(data.path_source, self.max_arg_len, label_key, relation)
+            self.load_from_file(data.path_source, self.max_arg_len, label_key, self.relation)
 
       # Array with elements arg1 length, arg2 length
       data.seq_len = np.array(data.seq_len, dtype=dtype)
