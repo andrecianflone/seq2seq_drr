@@ -83,7 +83,7 @@ def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches, prog)
   for result in batch_results:
     loss = result[1]
     prog.print_train(loss)
-    break
+    # break
 
 def classification_f1(sess, data, model, batch_size, num_batches_test):
   """ Get the total loss for the entire batch """
@@ -175,7 +175,7 @@ hyperparams = {
   'cell_units'       : 64,             # hidden layer size
   'dec_out_units'    : 64,             # output from decoder
   'num_layers'       : 2,              # not used
-  'keep_prob'        : 0.5,            # dropout keep probability
+  'keep_prob'        : 0.3,            # dropout keep probability
   'nb_epochs'        : 70,             # max training epochs
   'early_stop_epoch' : 10,             # stop after n epochs w/o improvement on val set
   'bidirectional'    : True,

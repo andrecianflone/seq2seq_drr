@@ -6,6 +6,7 @@ import codecs
 import os
 import re
 import json
+import copy
 
 def scan_folder(directory, output_file):
   """ Scan raw PDTB files and save as a single json """
@@ -54,14 +55,14 @@ def make_data_set(pdtb, mapping, rng, equal_negative=True):
     neg_relations = relations.copy()
     neg_relations.remove(relation)
     negative_set = _extract_disc(\
-                      pdtb, neg_relations, rng, types, mapping, 'negative', pos_ids)
+        pdtb, neg_relations, rng, types, mapping, 'negative', relation, pos_ids)
 
     # Maybe balance the sets 50/50 (if training set)
     if equal_negative:
       positive_set, negative_set = _rebalance_sets(positive_set, negative_set)
 
-    final_set.extend(positive_set)
-    final_set.extend(negative_set)
+    final_set.extend(copy.deepcopy(positive_set))
+    final_set.extend(copy.deepcopy(negative_set))
 
   return final_set
 
@@ -80,7 +81,7 @@ def _rebalance_sets(positive_set, negative_set):
   return positive_set, negative_set
 
 def _extract_disc(pdtb, relation, sections, types, mapping, new_label,
-    exclusion_set=None):
+    new_relation=None, exclusion_set=None):
   """ Returns all true of relation, withing section range, or types
   Args:
     pdtb: full PDTB as list of dict
@@ -120,6 +121,10 @@ def _extract_disc(pdtb, relation, sections, types, mapping, new_label,
       rel = mapping[disc['Sense']]
       if rel not in relation: continue
     disc['Relation'] = rel # new key
+
+    # Override relation for negative set
+    if new_relation is not None:
+      disc['Relation'] = new_relation
 
     # Check if not in the exclusion set
     if exclusion_set is not None:
