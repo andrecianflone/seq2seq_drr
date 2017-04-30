@@ -87,19 +87,6 @@ class BasicEncDec():
                       labels=classes_max,
                       logits=self.class_logits)
 
-    # weights = tf.constant(self.weights_cross_entropy, dtype=self.float_type)
-    # weights = tf.expand_dims(weights,0)
-    # weights = tf.tile(weights, [self.batch_size,1])
-    # class_cast = tf.cast(self.classes, dtype=self.float_type)
-    # self.class_loss = tf.nn.weighted_cross_entropy_with_logits(
-                      # targets=class_cast,
-                      # logits=self.class_logits,
-                      # pos_weight=weights)
-
-    # self.class_loss = tf.nn.softmax_cross_entropy_with_logits(
-                      # labels=self.classes,
-                      # logits=self.class_logits)
-
     self.class_cost = tf.reduce_mean(self.class_loss) # average across batch
     self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
 
@@ -177,7 +164,7 @@ class BasicEncDec():
     return outputs, state
 
   def emb_add_class(self, enc_embedded, classes):
-    """ Concatenate input and classes """
+    """ Concatenate input and classes. Do not use for classification """
 
     num_classes = tf.shape(classes)[1]
     # final_emb_dim = tf.to_int32(tf.shape(enc_embedded)[2] + num_classes)
@@ -350,7 +337,6 @@ class BasicEncDec():
       weigth_mask : valid logits should have weight "1" and padding "0",
         [batch_size, seq_len] of dtype float
     """
-    # TODO should not average_across_timesteps?
     # We need to delete zeroed elements in targets, beyond max sequence
     max_seq = tf.reduce_max(tf.reduce_sum(weight_mask, axis=1))
     max_seq = tf.to_int32(max_seq)
