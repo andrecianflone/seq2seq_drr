@@ -32,10 +32,14 @@ import argparse
 max_arg_len = 60              # max length of each arg
 maxlen      = max_arg_len * 2 # max num of tokens per sample
 
+# Settings file
+with codecs.open('settings.json', encoding='utf-8') as f:
+  settings = json.load(f)
+
 data_class = Preprocess(
             # dataset_name='conll',
-            dataset_name='one_v_all',
-            relation='Expansion',
+            dataset_name=settings['use_dataset'],
+            relation=settings['this_relation'],
             max_arg_len=max_arg_len,
             maxlen=maxlen,
             split_input=True,
@@ -49,8 +53,8 @@ dataset_dict = data_class.data_collect
 emb = Embeddings(data_class.vocab, data_class.inv_vocab, random_init_unknown=True)
 # embedding is a numpy array [vocab size x embedding dimension]
 embedding = emb.get_embedding_matrix(\
-            word2vec_model_path='data/google_news_300.bin',
-            small_model_path="data/embedding_pdtb.json",
+            word2vec_model_path=settings['model_path'],
+            small_model_path=settings['small_model_path'],
             save=True,
             load_saved=True)
 

@@ -10,6 +10,16 @@
     "bidirectional"    : "True",
     "attention"        : "True"
   },
+  "use_dataset" : {
+    "one_v_all"
+  },
+  "this_relation" : {
+    "Expansion"
+  },
+  "embedding" : {
+    "model_path" : {"data/google_news_300.bin"},
+    "small_model_path" : {"data/embedding_pdtb.json"}
+  },
   "conll" : {
     "datasets" : {
       "training_set"   : {"short_name":"train","path":"data/train.json"},
@@ -22,7 +32,7 @@
   },
   "one_v_all" : {
     "datasets" : {
-      "training_set"   : {"short_name":"train","path":"data/one_v_all_train_oversample.json"},
+      "training_set"   : {"short_name":"train","path":"data/one_v_all_train.json"},
       "validation_set" : {"short_name":"val","path":"data/one_v_all_dev.json"},
       "test_set"       : {"short_name":"test","path":"data/one_v_all_test.json"}
     },
