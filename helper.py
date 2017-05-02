@@ -125,6 +125,7 @@ class Preprocess():
         dataset_name, # which dataset from settings file
         max_arg_len, # max length of each argument
         maxlen, # maximum total length of input
+        settings, # settings file as dict
         relation=None, # include only these relations
         split_input=True, # boolean, split input into separate numpy arrays
         decoder_targets=False, # second arg without bos
@@ -134,12 +135,7 @@ class Preprocess():
         inv_vocab=None): # If none, generates inverse vocab
 
     self.relation = relation
-    self.dataset_name = dataset_name
-
-    # Settings file
-    with codecs.open('settings.json', encoding='utf-8') as f:
-      settings = json.load(f)
-    dataset=settings[self.dataset_name]
+    dataset=settings[dataset_name]
 
     # self.train_file   = training_set
     # self.val_file     = validation_set

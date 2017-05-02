@@ -42,6 +42,7 @@ data_class = Preprocess(
             relation=settings['this_relation'],
             max_arg_len=max_arg_len,
             maxlen=maxlen,
+            settings=settings,
             split_input=True,
             bos_tag="<bos>",
             eos_tag="<eos>")
@@ -53,8 +54,8 @@ dataset_dict = data_class.data_collect
 emb = Embeddings(data_class.vocab, data_class.inv_vocab, random_init_unknown=True)
 # embedding is a numpy array [vocab size x embedding dimension]
 embedding = emb.get_embedding_matrix(\
-            word2vec_model_path=settings['model_path'],
-            small_model_path=settings['small_model_path'],
+            word2vec_model_path=settings['embedding']['model_path'],
+            small_model_path=settings['embedding']['small_model_path'],
             save=True,
             load_saved=True)
 
@@ -296,8 +297,8 @@ if __name__ == "__main__":
   # params['trials'] = trials
   if args.file_save: params['file_save'] = args.file_save
 
-  params['dataset_name'] = data_class.dataset_name
-  params['relation'] = data_class.relation
+  params['dataset_name'] = settings['use_dataset']
+  params['relation'] = settings['this_relation']
   max_evals = args.trials
   best = fmin(train, params, algo=tpe.suggest, max_evals=max_evals, trials=trials)
   print('best: ')
