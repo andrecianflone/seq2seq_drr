@@ -105,8 +105,16 @@ def classification_f1(sess, data, model, batch_size, num_batches_test):
     start_id += batch_size
 
   # Metrics
-  average = 'binary' if data_class.num_classes == 2 else 'micro'
-  f1_micro = f1_score(y_true, y_pred, average=average)
+  # f1 score depending on number of classes
+  if data_class.num_classes == 2:
+    # If only 2 classes, then one is positive, and average is binary
+    pos_label = np.argmax(data_class.sense_to_one_hot['positive'])
+    average = 'binary'
+    f1_micro = f1_score(y_true, y_pred, pos_label=pos_label, average='binary')
+  else:
+    # If multiclass, no positive labels
+    f1_micro = f1_score(y_true, y_pred, average='micro')
+
   acc = accuracy_score(y_true, y_pred)
   # f1_conll = data_class.conll_f1_score(y_pred, data.orig_disc, data.path_source)
   f1_conll =f1_micro

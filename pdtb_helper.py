@@ -26,8 +26,11 @@ def scan_folder(directory, output_file):
         print("*****Process terminated*****")
         sys.exit()
 
-def make_data_set(pdtb, mapping, rng, equal_negative=True):
+def make_data_set(pdtb, mapping, rng, sampling="down", equal_negative=True):
   """ From the master json, create datasets of positive/negative
+  Arg:
+    sampling: if equal_negative is true, "down" will downsample largest,
+      and "over" will oversample smallest category
   Note:
   - Breakdown according to Pitler et al, 2009
   - The training set is balanced 50/50, negative randomly sampled
@@ -58,8 +61,11 @@ def make_data_set(pdtb, mapping, rng, equal_negative=True):
         pdtb, neg_relations, rng, types, mapping, 'negative', relation, pos_ids)
 
     # Maybe balance the sets 50/50 (if training set)
-    if equal_negative:
+    if equal_negative and sampling == "over":
       positive_set, negative_set = _oversample_set(positive_set, negative_set)
+
+    if equal_negative and sampling == "down":
+      positive_set, negative_set = _downsample_set(positive_set, negative_set)
 
     final_set.extend(copy.deepcopy(positive_set))
     final_set.extend(copy.deepcopy(negative_set))
@@ -67,7 +73,7 @@ def make_data_set(pdtb, mapping, rng, equal_negative=True):
   return final_set
 
 def _downsample_set(positive_set, negative_set):
-  """ The smaller set is reduced by random sampling """
+  """ The largest set is reduced by random sampling """
   max_size = min(len(positive_set), len(negative_set))
 
   if len(positive_set) > max_size:
@@ -267,17 +273,29 @@ if __name__ == "__main__":
   print('Getting training set')
   train_range = range(2, 20+1)
   train_data = make_data_set(\
-            'data/all_pdtb.json', 'data/map_pdtb_top.json', train_range, True)
-  dict_to_json(train_data, 'data/one_v_all_train_oversample.json')
+            pdtb='data/all_pdtb.json',
+            mapping='data/map_pdtb_top.json',
+            rng=train_range,
+            sampling="over",
+            equal_negative=True)
+  dict_to_json(train_data, 'data/one_v_all_no_entrel_train.json')
 
-  # print('Getting dev set')
-  # dev_range = range(0, 1+1)
-  # dev_data = make_data_set(\
-              # 'data/all_pdtb.json', 'data/map_pdtb_top.json', dev_range, False)
-  # dict_to_json(dev_data, 'data/one_v_all_dev.json')
+  print('Getting dev set')
+  dev_range = range(0, 1+1)
+  dev_data = make_data_set(\
+            pdtb='data/all_pdtb.json',
+            mapping='data/map_pdtb_top.json',
+            rng=dev_range,
+            sampling=None,
+            equal_negative=False)
+  dict_to_json(dev_data, 'data/one_v_all_no_entrel_dev.json')
 
-  # print('Getting test set')
-  # test_range = range(21, 22+1)
-  # test_data = make_data_set(\
-            # 'data/all_pdtb.json', 'data/map_pdtb_top.json', test_range, False)
-  # dict_to_json(test_data, 'data/one_v_all_test.json')
+  print('Getting test set')
+  test_range = range(21, 22+1)
+  test_data = make_data_set(\
+            pdtb='data/all_pdtb.json',
+            mapping='data/map_pdtb_top.json',
+            rng=test_range,
+            sampling=None,
+            equal_negative=False)
+  dict_to_json(test_data, 'data/one_v_all_no_entrel_test.json')
