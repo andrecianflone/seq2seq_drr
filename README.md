@@ -59,6 +59,17 @@ According to the official [PDTB summary]:
 ### 1st level, one-v-all
 For higher level classification, such as in [Chen et al, 2016], they experiment with one-v-all with negative sampling from section 2-20. They use the Pitler breakdown and merge EntRel with Expansion.
 
+#### GRN
+Gated Relevance Network. Summary:
+- BiLSTM + GRN + Pooling + MLP
+- Embedding: 50D, by Turian et al (2010) (not available online)
+- Embeddings fixed during training
+- Use only top 10k word by frequency
+- All text are set to 50 words
+- Parameters init between [-0.1, 0.1]
+
+Results:
+
 [Chen et al, 2016]: https://www.aclweb.org/anthology/P/P16/P16-1163.pdf
 [PDTB corpus]: https://www.seas.upenn.edu/~pdtb/papers/pdtb-lrec08.pdf
 [Zhang et al 2015]: http://www.anthology.aclweb.org/D/D15/D15-1266.pdf

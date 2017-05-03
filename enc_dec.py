@@ -7,6 +7,7 @@ class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
   def __init__(self, num_units, dec_out_units, max_seq_len, embedding,
       num_classes, emb_dim):
+    self.num_classes = num_classes
     self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32
     self.int_type = tf.int32
@@ -82,10 +83,7 @@ class BasicEncDec():
         self.decoded_final_state, dec_out_units, num_classes, "class_softmax")
 
     # Classification loss
-    classes_max = tf.argmax(self.classes, axis=1)
-    self.class_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                      labels=classes_max,
-                      logits=self.class_logits)
+    self.class_loss = self.classification_loss(self.classes, self.class_logits)
 
     self.class_cost = tf.reduce_mean(self.class_loss) # average across batch
     self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
@@ -358,6 +356,19 @@ class BasicEncDec():
     y_true = tf.argmax(classes, axis=1)
 
     return y_pred, y_true
+
+  def classification_loss(self, classes_true, classes_logits):
+    """ Class loss depends if binary or multiclass """
+    # if self.num_classes == 2:
+      # entropy_fn = tf.nn.sigmoid_cross_entropy_with_logits
+    # if self.num_classes > 1:
+    entropy_fn = tf.nn.sparse_softmax_cross_entropy_with_logits
+
+    classes_max = tf.argmax(classes_true, axis=1)
+    class_loss = entropy_fn(
+                      labels=classes_max,
+                      logits=classes_logits)
+    return class_loss
 
   def log_prob(self, logits, targets):
     """ Calculate the perplexity of a sequence:
