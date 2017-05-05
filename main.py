@@ -185,10 +185,10 @@ def language_model_class_loss():
 # Default params
 hyperparams = {
   'batch_size'       : 32,             # training batch size
-  'cell_units'       : 64,             # hidden layer size
+  'cell_units'       : 32,             # hidden layer size
   'dec_out_units'    : 64,             # output from decoder
   'num_layers'       : 2,              # not used
-  'keep_prob'        : 0.5,            # dropout keep probability
+  'keep_prob'        : 0.3,            # dropout keep probability
   'nb_epochs'        : 70,             # max training epochs
   'early_stop_epoch' : 10,             # stop after n epochs w/o improvement on val set
   'bidirectional'    : True,
@@ -197,7 +197,7 @@ hyperparams = {
 # Params configured for tuning
 search_space = {
   'batch_size'    : hp.choice('batch_size', range(32, 128)),# training batch size
-  'cell_units'    : hp.choice('cell_units', range(8, 200)), # hidden layer size
+  'cell_units'    : hp.choice('cell_units', range(4, 200)), # hidden layer size
   'dec_out_units' : hp.choice('dec_out_units', range(4, 300)), # output from decoder
   'num_layers'    : hp.choice('num_layers', range(1, 10)),  # not used
   'keep_prob'     : hp.uniform('keep_prob', 0.1, 1)  # dropout keep probability
@@ -311,5 +311,5 @@ if __name__ == "__main__":
   best = fmin(train, params, algo=tpe.suggest, max_evals=max_evals, trials=trials)
   print('best: ')
   print(best)
-  pickle.dump(trials, open("trials.p","wb"))
+  # pickle.dump(trials, open("trials.p","wb"))
 
