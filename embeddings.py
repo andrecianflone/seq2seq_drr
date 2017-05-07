@@ -64,6 +64,19 @@ class Embeddings():
     emb_dim = len(list(word_to_emb.values())[0])
     return self._load_embedding(vocab,word_to_emb,emb_dim)
 
+  def _load_embedding_from_txt(self, file_path, vocab):
+    """ Load embedding dictionary from a text file
+    The file should be formatted as: word, tab, embedding data
+    """
+    word_to_emb = {}
+    with codecs.open(embedding_file, encoding='utf-8') as f:
+      for line in f:
+        split = line.split('\t')
+        word = split[0]
+        embedding = list(map(float, split[1]))
+        word_to_emb[word] = embedding
+  #TODO
+
   def _load_embedding_from_binary(self, file_path, vocab):
     """ Load embeddings from a pretrained model, like word2vec
     Words not in vocab are randomly initialized
