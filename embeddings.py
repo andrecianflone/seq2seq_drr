@@ -4,6 +4,7 @@ General tool to manage word embeddings.
 Get embeddings from a binary file or json. Can save to json.
 """
 import os.path
+import codecs
 import json
 import numpy as np
 
@@ -36,10 +37,18 @@ class Embeddings():
       assert load_saved == True
     if load_saved and os.path.isfile(embedding_file):
       return self._load_embedding_from_json(embedding_file, self.vocab)
+    # Load large file
     else:
-      embedding = self._load_embedding_from_binary(model_path, self.vocab)
+      ext = model_path.split('.')[-1]
+      if ext == "bin":
+        embedding = self._load_embedding_from_binary(model_path, self.vocab)
+      elif ext == "txt":
+        embedding = self._load_embedding_from_txt(model_path, self.vocab)
+
+    # Save embedding for future faster load
     if save:
       self._save_embedding(embedding_file, embedding, self.inv_vocab)
+
     return embedding
 
   def _save_embedding(self, embedding_file, emb_matrix, inv_vocab):
@@ -69,13 +78,21 @@ class Embeddings():
     The file should be formatted as: word, tab, embedding data
     """
     word_to_emb = {}
-    with codecs.open(embedding_file, encoding='utf-8') as f:
+    with codecs.open(file_path, encoding='utf-8') as f:
+      for line in f:
+        first_line = line.split('\t')
+        break
+    emb_dim = len(first_line[1].split(' '))
+    with codecs.open(file_path, encoding='utf-8') as f:
       for line in f:
         split = line.split('\t')
         word = split[0]
-        embedding = list(map(float, split[1]))
+        try:
+          embedding = list(map(float, split[1].split(' ')))
+        except:
+          continue
         word_to_emb[word] = embedding
-  #TODO
+    return self._load_embedding(vocab,word_to_emb,emb_dim)
 
   def _load_embedding_from_binary(self, file_path, vocab):
     """ Load embeddings from a pretrained model, like word2vec

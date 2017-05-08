@@ -13,8 +13,8 @@
   "use_dataset" : "one_v_all",
   "this_relation" : "Expansion",
   "embedding" : {
-    "model_path" : "data/google_news_300.bin",
-    "small_model_path" : "data/embedding_pdtb.json"
+    "model_path" : "data/meta_emb.txt",
+    "small_model_path" : "data/embedding_pdtb_meta.json"
   },
   "conll" : {
     "datasets" : {
