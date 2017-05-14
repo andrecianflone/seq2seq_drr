@@ -358,16 +358,19 @@ class BasicEncDec():
     return y_pred, y_true
 
   def classification_loss(self, classes_true, classes_logits):
-    """ Class loss depends if binary or multiclass """
-    # if self.num_classes == 2:
-      # entropy_fn = tf.nn.sigmoid_cross_entropy_with_logits
-    # if self.num_classes > 1:
+    """ Class loss. If binary, two outputs"""
     entropy_fn = tf.nn.sparse_softmax_cross_entropy_with_logits
 
     classes_max = tf.argmax(classes_true, axis=1)
     class_loss = entropy_fn(
                       labels=classes_max,
                       logits=classes_logits)
+    return class_loss
+
+  def sequence_classification_loss(self, classes_true, classes_logits):
+    """ Class loss across the whole sequence. Force each decoder element to
+    predict the class instead of only the next hidden state"""
+    # TODO
     return class_loss
 
   def log_prob(self, logits, targets):
