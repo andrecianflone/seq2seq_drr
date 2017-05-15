@@ -22,8 +22,10 @@ def file_info(filepath, explicit=None):
 
       # pprint(j)
       # input('...')
-      total_tokens = len(j['Arg1']['TokenList'])
-      total_tokens += len(j['Arg2']['TokenList'])
+      total_tokens = len(j['Arg1']['Tokenized'])
+      total_tokens += len(j['Arg2']['Tokenized'])
+      # total_tokens = len(j['Arg1']['TokenList'])
+      # total_tokens += len(j['Arg2']['TokenList'])
       if total_tokens > 120:
         total_tokens = 120
       arg_len[total_tokens] += 1
@@ -70,9 +72,12 @@ def print_info(filepath, explicit=None, plot=False):
     plot_arg_len(arg_len)
 
 if __name__ == "__main__":
-  print_info('data/train.json', False)
-  print_info('data/dev.json', False)
-  print_info('data/test.json', False)
-  print_info('data/blind.json', False)
+  print_info('data/one_v_all_dev.json', False)
+  print_info('data/one_v_all_test.json', False)
+  print_info('data/one_v_all_train.json', False)
+  # print_info('data/train.json', False)
+  # print_info('data/dev.json', False)
+  # print_info('data/test.json', False)
+  # print_info('data/blind.json', False)
 
 

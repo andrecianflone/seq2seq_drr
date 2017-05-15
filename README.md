@@ -12,11 +12,11 @@ DRR with encoder/decoder type model
 
 **The Pitler et al 2009 breakdown:**
 
-| Set         | WSJ sections       |
-|-------------|--------------------|
-| Training    | 2-20               |
-| Development | 0-1, can use 23-24 |
-| Test        | 21-22              |
+| Set         | WSJ sections                  |
+|-------------|-------------------------------|
+| Training    | 2-20                          |
+| Development | 0-1, optionally can use 23-24 |
+| Test        | 21-22                         |
 
 Followed by, for example: [Zhang et al 2015], [Chen et al, 2016], [Ji and Eisensteing, 2015]
 
@@ -68,10 +68,32 @@ Gated Relevance Network. Summary:
 - All text are set to 50 words
 - Parameters init between [-0.1, 0.1]
 
-Results:
+### Results:
+**PDTB, top-level, Implicit, EntRel as Expansion**
+
+| Type          | Author                                               | Comparison | Contingency | Expansion | Temporal |
+|:--------------|:-----------------------------------------------------|------------|-------------|-----------|----------|
+|               | [Pitler et al., 2009][Pitler et al, 2009]            | 21.96%     | 47.13%      | 76.42%    | 16.76%   |
+|               | [Zhou et al., 2010][Zhou et al, 2010]                | 31.79%     | 47.16%      | 70.11%    | 20.30%   |
+|               | [Park and Cardie, 2012][Park and Cardie, 2012]       | 31.32%     | 49.82%      | 79.22%    | 26.57%   |
+|               | [Rutherford and Xue, 2014][Rutherford and Xue, 2014] | 39.70%     | 54.42%      | 80.44%    | 28.69%   |
+|               | [Ji and Eisenstein, 2015][Ji and Eisensteing, 2015]  | 35.93%     | 52.78%      | 80.02%    | 27.63%   |
+| LSTM          | [Chen et al, 2016][Chen et al, 2016]                 | 31.78%     | 45.39%      | 75.10%    | 19.65%   |
+| Bi-LSTM + GRN | [Chen et al, 2016][Chen et al, 2016]                 | 40.17%     | 54.76%      | 80.62%    | 31.32%   |
+
+**PDTB, top-level, Implicit, no EntRel**
+
+| Type        | Author                               | Comparison | Contingency | Expansion | Temporal |
+|:------------|:-------------------------------------|------------|-------------|-----------|----------|
+| Shallow CNN | [Zhang et al 2015][Zhang et al 2015] | 33.22%     | 52.04%      | 69.59%    | 30.54%   |
 
 [Chen et al, 2016]: https://www.aclweb.org/anthology/P/P16/P16-1163.pdf
 [PDTB corpus]: https://www.seas.upenn.edu/~pdtb/papers/pdtb-lrec08.pdf
 [Zhang et al 2015]: http://www.anthology.aclweb.org/D/D15/D15-1266.pdf
 [conll]: http://www.aclweb.org/anthology/K/K16/K16-2.pdf#page=26
 [Ji and Eisensteing, 2015]: https://arxiv.org/pdf/1411.6699.pdf
+[Liu et al, 2016]: https://www.aaai.org/ocs/index.php/AAAI/AAAI16/paper/view/11831/12018
+[Pitler et al, 2009]: http://www.aclweb.org/website/old_anthology/P/P09/P09-1077.pdf
+[Zhou et al, 2010]: http://dl.acm.org/citation.cfm?id=1944738
+[Park and Cardie, 2012]: http://dl.acm.org/citation.cfm?id=2392818
+[Rutherford and Xue, 2014]: https://www.aclweb.org/anthology/E/E14/E14-1.pdf#page=671
