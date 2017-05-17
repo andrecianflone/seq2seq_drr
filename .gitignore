@@ -2,7 +2,8 @@
 data/
 conll_utils/
 embedding.txt
-*.swp
+*.sw*
+
 tags
 trials*
 *~
