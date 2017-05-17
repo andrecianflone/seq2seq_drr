@@ -276,9 +276,9 @@ if __name__ == "__main__":
             pdtb='data/all_pdtb.json',
             mapping='data/map_pdtb_top.json',
             rng=train_range,
-            sampling="over",
+            sampling="down",
             equal_negative=True)
-  dict_to_json(train_data, 'data/one_v_all_no_entrel_train.json')
+  dict_to_json(train_data, 'data/one_v_all_train.json')
 
   print('Getting dev set')
   dev_range = range(0, 1+1)
@@ -288,7 +288,7 @@ if __name__ == "__main__":
             rng=dev_range,
             sampling=None,
             equal_negative=False)
-  dict_to_json(dev_data, 'data/one_v_all_no_entrel_dev.json')
+  dict_to_json(dev_data, 'data/one_v_all_dev.json')
 
   print('Getting test set')
   test_range = range(21, 22+1)
@@ -298,4 +298,4 @@ if __name__ == "__main__":
             rng=test_range,
             sampling=None,
             equal_negative=False)
-  dict_to_json(test_data, 'data/one_v_all_no_entrel_test.json')
+  dict_to_json(test_data, 'data/one_v_all_test.json')

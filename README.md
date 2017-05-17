@@ -12,8 +12,8 @@ DRR with encoder/decoder type model
 
 **The Pitler et al 2009 breakdown:**
 
-| Set         | WSJ sections                  |
-|-------------|-------------------------------|
+| Set         | WSJ sections                  | Temporal | Contingency | Comparison | Expansion | EntRel |
+|-------------|-------------------------------| ---|---|---|---|---|
 | Training    | 2-20                          |
 | Development | 0-1, optionally can use 23-24 |
 | Test        | 21-22                         |

@@ -33,7 +33,8 @@ def file_info(filepath, explicit=None):
       typerel = str(j['Type'])
       types[typerel] += 1
 
-      sense = str(j['Sense'][0])
+      # sense = str(j['Sense'][0])
+      sense = str(j['Relation'])
       if explicit == True:
         if typerel == 'Explicit':
           senses[sense] += 1
