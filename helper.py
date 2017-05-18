@@ -143,7 +143,6 @@ class Preprocess():
     # self.val_file     = validation_set
     self.max_arg_len  = max_arg_len
     self.vocab        = None # set in method get_data
-    self.max_vocab    = max_vocab
     self.inv_vocab    = inv_vocab # set in method get_data
     self.pad_val      = '<pad>'
     self.total_tokens = 0
@@ -187,7 +186,7 @@ class Preprocess():
 
     # Create vocab for all data
     if self.vocab == None:
-      self.vocab, self.inv_vocab = self.create_vocab(self.data_collect)
+      self.vocab, self.inv_vocab = self.create_vocab(self.data_collect, max_vocab)
     self.total_tokens = len(self.vocab)
 
     # Integerize x and decoder targets, and make numpy arrays
@@ -373,7 +372,7 @@ class Preprocess():
       seq_list.append(self.eos_tag)
     return seq_list
 
-  def create_vocab(self, data_collect):
+  def create_vocab(self, data_collect, max_vocab):
     """ Create a dictionary of words to int, and the reverse
 
     You'll want to save this, required for model restore
@@ -387,7 +386,7 @@ class Preprocess():
     words.extend([self.eos_tag] * sample_count) # silly hack to add tag
     count = Counter(words) # word count
     # Vocab in descending order
-    inv_vocab = [x[0] for x in count.most_common()]
+    inv_vocab = [x[0] for x in count.most_common(max_vocab)]
     # Vocab with index position instead of word
     vocab = {x: i for i, x in enumerate(inv_vocab)}
     return vocab, inv_vocab

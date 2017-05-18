@@ -12,6 +12,7 @@
   },
   "use_dataset" : "one_v_all",
   "this_relation" : "Comparison",
+  "max_vocab" : "10000",
   "embedding" : {
     "model_path" : "data/google_news_300.bin",
     "small_model_path" : "data/embedding_pdtb.json"
