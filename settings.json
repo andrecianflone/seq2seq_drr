@@ -11,7 +11,7 @@
     "attention"        : "True"
   },
   "use_dataset" : "one_v_all",
-  "this_relation" : "Temporal",
+  "this_relation" : "Comparison",
   "embedding" : {
     "model_path" : "data/google_news_300.bin",
     "small_model_path" : "data/embedding_pdtb.json"

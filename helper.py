@@ -127,6 +127,8 @@ class Preprocess():
         maxlen, # maximum total length of input
         settings, # settings file as dict
         relation=None, # include only these relations
+        max_vocab=None, # limit vocab size
+        random_negative=False,
         split_input=True, # boolean, split input into separate numpy arrays
         decoder_targets=False, # second arg without bos
         bos_tag = None, # beginning of sequence tag
@@ -141,6 +143,7 @@ class Preprocess():
     # self.val_file     = validation_set
     self.max_arg_len  = max_arg_len
     self.vocab        = None # set in method get_data
+    self.max_vocab    = max_vocab
     self.inv_vocab    = inv_vocab # set in method get_data
     self.pad_val      = '<pad>'
     self.total_tokens = 0
