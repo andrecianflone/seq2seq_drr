@@ -46,14 +46,21 @@ data_class = Preprocess(
             maxlen=maxlen,
             settings=settings,
             split_input=True,
-            bos_tag="<bos>",
-            eos_tag="<eos>")
+            pad_tag = settings['pad_tag'],
+            unknown_tag = settings['unknown_tag'],
+            bos_tag = settings['bos_tag'],
+            eos_tag = settings['eos_tag'])
 
 # Data sets as Data objects
 dataset_dict = data_class.data_collect
 
 # Word embeddings
-emb = Embeddings(data_class.vocab, data_class.inv_vocab, random_init_unknown=True)
+emb = Embeddings(
+    data_class.vocab,
+    data_class.inv_vocab,
+    random_init_unknown=bool(settings['random_init_unknown']),
+    unknown_tag = settings['unknown_tag'])
+
 # embedding is a numpy array [vocab size x embedding dimension]
 embedding = emb.get_embedding_matrix(\
             word2vec_model_path=settings['embedding']['model_path'],
@@ -309,6 +316,7 @@ if __name__ == "__main__":
 
   params['dataset_name'] = settings['use_dataset']
   params['relation'] = settings['this_relation']
+  params['random_init_unknown'] = settings['random_init_unknown']
   max_evals = args.trials
   best = fmin(train, params, algo=tpe.suggest, max_evals=max_evals, trials=trials)
   print('best: ')
