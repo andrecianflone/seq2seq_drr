@@ -9,7 +9,7 @@ import json
 import numpy as np
 
 class Embeddings():
-  def __init__(self, vocab, inverse_vocab, random_init_unknown):
+  def __init__(self, vocab, inverse_vocab, random_init_unknown, unknown_tag):
     """
     Args:
       vocab         : dictionary of type {word_string : id_int}
@@ -19,6 +19,8 @@ class Embeddings():
     """
     self.vocab = vocab
     self.inv_vocab = inverse_vocab
+    self.random_init_unknown = random_init_unknown
+    self.unknown_tag = unknown_tag
 
   def get_embedding_matrix(self, word2vec_model_path=None,small_model_path=None,
             save=False, load_saved=False):
@@ -108,14 +110,19 @@ class Embeddings():
   def _load_embedding(self, vocab, model, emb_dim):
     out_of_model = 0 # keep track how many random words
     emb_matrix = np.zeros((len(vocab), emb_dim), dtype=np.float32)
+    unk_emb = np.random.rand(emb_dim)
     for k, v in vocab.items():
       # Try to get word from the Word2Vec model
       try:
         emb_matrix[v] = model[k]
-      except: # If not in Word2Vec, randomly initialize
+      except: # If not in Embedding
         out_of_model += 1
-        print("word '{}' was randomly initialized".format(k))
-        emb_matrix[v] = np.random.rand(emb_dim)
+        if self.random_init_unknown == True:
+          print("word '{}' was randomly initialized".format(k))
+          emb_matrix[v] = np.random.rand(emb_dim)
+        else:
+          print("word '{}' was replaced by unk tag".format(k))
+          emb_matrix[v] = unk_emb
 
     del model # Hint to Python to reduce memory
     if out_of_model > 0:
