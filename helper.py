@@ -131,6 +131,8 @@ class Preprocess():
         random_negative=False,
         split_input=True, # boolean, split input into separate numpy arrays
         decoder_targets=False, # second arg without bos
+        pad_tag = "<pad>", # padding tag
+        unknown_tag = "<unk>", # tag for unknown
         bos_tag = None, # beginning of sequence tag
         eos_tag = None, # end of sequence tag
         vocab=None, # If none, will create the vocab
@@ -144,8 +146,9 @@ class Preprocess():
     self.max_arg_len  = max_arg_len
     self.vocab        = None # set in method get_data
     self.inv_vocab    = inv_vocab # set in method get_data
-    self.pad_val      = '<pad>'
     self.total_tokens = 0
+    self.pad_tag      = pad_tag
+    self.unknown_tag  = unknown_tag
     self.bos_tag      = bos_tag
     self.eos_tag      = eos_tag
     self.maxlen       = maxlen
@@ -296,7 +299,12 @@ class Preprocess():
     """ Swap all tokens for their integer values based on vocab """
     x_new = []
     for sample in x:
-      tokens = [vocab[word] for word in sample]
+      tokens = []
+      for word in sample:
+        if word not in vocab:
+          tokens.append(vocab[self.unknown_tag])
+        else:
+          tokens.append(vocab[word])
       x_new.append(tokens)
     return x_new
 
@@ -309,14 +317,14 @@ class Preprocess():
         arg2_len = arg_len[i][1]
         pad1     = self.max_arg_len - arg1_len
         pad2     = self.max_arg_len - arg2_len
-        sample   = sample[:arg1_len] + [self.pad_val] * pad1 +\
-                   sample[arg1_len:] + [self.pad_val] * pad2
+        sample   = sample[:arg1_len] + [self.pad_tag] * pad1 +\
+                   sample[arg1_len:] + [self.pad_tag] * pad2
         x_new.append(sample)
 
       # Or pad only the end of the whole input
       else:
         pad = self.max_arg_len - len(sample)
-        sample.extend([self.pad_val]*pad)
+        sample.extend([self.pad_tag]*pad)
         x_new.append(sample)
     return x_new
 
@@ -387,6 +395,8 @@ class Preprocess():
     count = Counter(words) # word count
     # Vocab in descending order
     inv_vocab = [x[0] for x in count.most_common(max_vocab)]
+    if self.unknown_tag:
+      inv_vocab.insert(0, self.unknown_tag)
     # Vocab with index position instead of word
     vocab = {x: i for i, x in enumerate(inv_vocab)}
     return vocab, inv_vocab
