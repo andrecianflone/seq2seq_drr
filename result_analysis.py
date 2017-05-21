@@ -1,3 +1,6 @@
+"""
+eg: python result_analysis.py trials/pdtb/cell_units --metric val_f1
+"""
 from pprint import pprint
 import json
 import codecs
