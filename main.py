@@ -8,7 +8,7 @@ Author: Andre Cianflone
 For a single trial, call script without arguments
 
 For hyperparameter search, call as this example:
-python main.py --trials 2 --search_param cell_units --file_save trials/cell_units
+python main.py --trials 50 --search_param cell_units --file_save trials/cell_units
 -----------
 """
 from helper import Preprocess, Data, MiniData, make_batches
@@ -35,6 +35,10 @@ maxlen      = max_arg_len * 2 # max num of tokens per sample
 # Settings file
 with codecs.open('settings.json', encoding='utf-8') as f:
   settings = json.load(f)
+  if settings['random_init_unknown'] == "True":
+    settings['random_init_unknown'] = True
+  else:
+    settings['random_init_unknown'] = False
 
 data_class = Preprocess(
             # dataset_name='conll',
@@ -58,7 +62,7 @@ dataset_dict = data_class.data_collect
 emb = Embeddings(
     data_class.vocab,
     data_class.inv_vocab,
-    random_init_unknown=bool(settings['random_init_unknown']),
+    random_init_unknown=settings['random_init_unknown'],
     unknown_tag = settings['unknown_tag'])
 
 # embedding is a numpy array [vocab size x embedding dimension]
