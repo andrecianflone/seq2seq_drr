@@ -11,7 +11,7 @@
     "attention"        : "True"
   },
   "use_dataset" : "one_v_all",
-  "this_relation" : "Expansion",
+  "this_relation" : "Temporal",
   "max_vocab" : "10000",
   "random_init_unknown" : "False",
   "unknown_tag" : "<unk>",

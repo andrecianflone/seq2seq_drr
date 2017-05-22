@@ -321,6 +321,7 @@ if __name__ == "__main__":
   params['dataset_name'] = settings['use_dataset']
   params['relation'] = settings['this_relation']
   params['random_init_unknown'] = settings['random_init_unknown']
+  params['max_vocab'] = settings['max_vocab']
   max_evals = args.trials
   best = fmin(train, params, algo=tpe.suggest, max_evals=max_evals, trials=trials)
   print('best: ')
