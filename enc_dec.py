@@ -47,11 +47,14 @@ class BasicEncDec():
     ############################
     # Model (magic is here)
     ############################
-    cell_enc_fw = GRUCell(num_units)
+    # cell_enc_fw = GRUCell(num_units)
+    cell_enc_fw = BasicLSTMCell(num_units)
     cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
-    cell_enc_bw = GRUCell(num_units)
+    # cell_enc_bw = GRUCell(num_units)
+    cell_enc_bw = BasicLSTMCell(num_units)
     cell_enc_bw = DropoutWrapper(cell_enc_bw, output_keep_prob=self.keep_prob)
-    cell_enc = GRUCell(num_units)
+    # cell_enc = GRUCell(num_units)
+    cell_enc = BasicLSTMCell(num_units)
     cell_enc = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
 
     cell_dec = GRUCell(decoder_num_units)
