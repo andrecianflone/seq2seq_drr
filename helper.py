@@ -483,7 +483,7 @@ def parse_bool(val):
     return None
 
 def parse_int(val):
-  if settings['max_vocab'] == "None":
+  if val == "None":
     return None
   else:
-    return int(settings['max_vocab'])
+    return int(val)
