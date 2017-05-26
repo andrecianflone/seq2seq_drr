@@ -464,15 +464,26 @@ def settings(path):
     settings = json.load(f)
 
   # Fix random init unknown
-  if settings['random_init_unknown'] == "True":
-    settings['random_init_unknown'] = True
-  else:
-    settings['random_init_unknown'] = False
+  settings['random_init_unknown'] = parse_bool(settings['random_init_unknown'])
 
   # Fix max vocab
-  if settings['max_vocab'] == "None":
-    settings['max_vocab'] = None
-  else:
-    settings['max_vocab'] = int(settings['max_vocab'])
+  settings['max_vocab'] = parse_int(settings['max_vocab'])
+
+  # fix embedding trainable
+  settings['emb_trainable'] = parse_bool(settings['emb_trainable'])
 
   return settings
+
+def parse_bool(val):
+  if val == "True":
+    return True
+  if val == "False":
+    return False
+  if val == "None":
+    return None
+
+def parse_int(val):
+  if settings['max_vocab'] == "None":
+    return None
+  else:
+    return int(settings['max_vocab'])

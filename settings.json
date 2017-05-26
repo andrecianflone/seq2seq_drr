@@ -11,13 +11,14 @@
     "attention"        : "True"
   },
   "use_dataset" : "one_v_all",
-  "this_relation" : "Temporal",
-  "max_vocab" : "10000",
+  "this_relation" : "Expansion",
+  "max_vocab" : "None",
   "random_init_unknown" : "False",
   "unknown_tag" : "<unk>",
   "pad_tag" : "<pad>",
   "bos_tag" : "<bos>",
   "eos_tag" : "<eos>",
+  "emb_trainable" : "True",
   "embedding" : {
     "model_path" : "data/google_news_300.bin",
     "small_model_path" : "data/embedding_pdtb.json"

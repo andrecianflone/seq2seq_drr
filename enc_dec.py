@@ -5,8 +5,8 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
-  def __init__(self, num_units, dec_out_units, max_seq_len, embedding,
-      num_classes, emb_dim):
+  def __init__(self, num_units, dec_out_units, max_seq_len, num_classes,
+      embedding, emb_dim, emb_trainable=False):
     self.num_classes = num_classes
     self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32
@@ -20,7 +20,7 @@ class BasicEncDec():
     ############################
     vocab_size = embedding.shape[0]
     # Embedding tensor is of shape [vocab_size x embedding_size]
-    self.embedding_tensor = embedding
+    self.embedding_tensor = self.embedding_setup(embedding, emb_trainable)
 
     # Encoder inputs
     self.enc_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
@@ -107,13 +107,24 @@ class BasicEncDec():
     self.gen_cost = tf.reduce_mean(self.gen_loss) # average across batch
     self.gen_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.gen_cost)
 
+  def embedding_setup(self, embedding, emb_trainable):
+    """ If trainable, returns variable, otherwise the original embedding """
+    if emb_trainable == True:
+      emb_variable = tf.get_variable(
+          name="embedding_matrix", shape=embedding.shape,
+          initializer = tf.constant_initializer(embedding))
+      return emb_variable
+    else:
+      return embedding
+
   def embedded(self, word_ids, embedding_tensor, scope="embedding"):
     """Swap ints for dense embeddings, on cpu.
     word_ids correspond the proper row index of the embedding_tensor
 
     Args:
       words_ids: array of [batch_size x sequence of word ids]
-      embedding_tensor: tensor from which to retrieve the embedding
+      embedding_tensor: tensor from which to retrieve the embedding, word id
+        takes corresponding tensor row
     Returns:
       tensor of shape [batch_size, sequence length, embedding size]
     """
@@ -160,6 +171,8 @@ class BasicEncDec():
       # Since we don't need the outputs separate, we concat here
       outputs = tf.concat(outputs,2)
       outputs.set_shape([None, None, self.bi_encoder_hidden])
+      # If LSTM cell, then "state" is not a tuple of Tensors but an
+      # LSTMStateTuple of "c" and "h", so we grab "h".
       if "LSTMStateTuple" in str(type(state[0])):
         state = tf.concat([state[0][1],state[1][1]],axis=1)
       else:

@@ -244,9 +244,10 @@ def train(params):
           num_units=params['cell_units'],
           dec_out_units=params['dec_out_units'],
           max_seq_len=max_arg_len,
-          embedding=embedding,
           num_classes=data_class.num_classes,
-          emb_dim=embedding.shape[1])
+          embedding=embedding,
+          emb_dim=embedding.shape[1],
+          emb_trainable=params['emb_trainable'])
 
   # Start training
   with tf.Session() as sess:
@@ -317,6 +318,7 @@ if __name__ == "__main__":
   params['relation'] = settings['this_relation']
   params['random_init_unknown'] = settings['random_init_unknown']
   params['max_vocab'] = settings['max_vocab']
+  params['emb_trainable'] = settings['emb_trainable']
   max_evals = args.trials
   best = fmin(train, params, algo=tpe.suggest, max_evals=max_evals, trials=trials)
   print('best: ')
