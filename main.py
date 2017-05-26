@@ -11,7 +11,7 @@ For hyperparameter search, call as this example:
 python main.py --trials 50 --search_param cell_units --file_save trials/cell_units
 -----------
 """
-from helper import Preprocess, Data, MiniData, make_batches
+from helper import Preprocess, Data, MiniData, make_batches, settings
 from embeddings import Embeddings
 import tensorflow as tf
 from sklearn.metrics import f1_score, accuracy_score
@@ -33,18 +33,13 @@ max_arg_len = 60              # max length of each arg
 maxlen      = max_arg_len * 2 # max num of tokens per sample
 
 # Settings file
-with codecs.open('settings.json', encoding='utf-8') as f:
-  settings = json.load(f)
-  if settings['random_init_unknown'] == "True":
-    settings['random_init_unknown'] = True
-  else:
-    settings['random_init_unknown'] = False
+settings = settings('settings.json')
 
 data_class = Preprocess(
             # dataset_name='conll',
-            dataset_name=settings['use_dataset'],
-            relation=settings['this_relation'],
-            max_vocab=int(settings['max_vocab']),
+            dataset_name = settings['use_dataset'],
+            relation = settings['this_relation'],
+            max_vocab = settings['max_vocab'],
             random_negative=False,
             max_arg_len=max_arg_len,
             maxlen=maxlen,

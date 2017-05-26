@@ -458,3 +458,21 @@ def clean_str(string):
 
   return string.strip().lower().split()
 
+def settings(path):
+  """ Returns settings dictionary """
+  with codecs.open(path, encoding='utf-8') as f:
+    settings = json.load(f)
+
+  # Fix random init unknown
+  if settings['random_init_unknown'] == "True":
+    settings['random_init_unknown'] = True
+  else:
+    settings['random_init_unknown'] = False
+
+  # Fix max vocab
+  if settings['max_vocab'] == "None":
+    settings['max_vocab'] = None
+  else:
+    settings['max_vocab'] = int(settings['max_vocab'])
+
+  return settings
