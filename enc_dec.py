@@ -160,7 +160,10 @@ class BasicEncDec():
       # Since we don't need the outputs separate, we concat here
       outputs = tf.concat(outputs,2)
       outputs.set_shape([None, None, self.bi_encoder_hidden])
-      state = tf.concat(state,1)
+      if "LSTMStateTuple" in str(type(state[0])):
+        state = tf.concat([state[0][1],state[1][1]],axis=1)
+      else:
+        state = tf.concat(state,1)
       state.set_shape([None, self.bi_encoder_hidden])
     return outputs, state
 
