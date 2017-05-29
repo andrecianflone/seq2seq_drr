@@ -192,15 +192,15 @@ def language_model_class_loss():
 ###############################################################################
 # Default params
 hyperparams = {
-  'batch_size'       : 32,             # training batch size
-  'cell_units'       : 32,             # hidden layer size
-  'dec_out_units'    : 64,             # output from decoder
-  'num_layers'       : 2,              # not used
-  'keep_prob'        : 0.3,            # dropout keep probability
-  'nb_epochs'        : 70,             # max training epochs
-  'early_stop_epoch' : 10,             # stop after n epochs w/o improvement on val set
-  'bidirectional'    : True,
-  'attention'        : True
+  'batch_size'       : settings['batch_size'],       # training batch size
+  'cell_units'       : settings['cell_units'],       # hidden layer size
+  'dec_out_units'    : settings['dec_out_units'],    # output from decoder
+  'num_layers'       : settings['num_layers'],       # not used
+  'keep_prob'        : settings['keep_prob'],        # dropout keep probability
+  'nb_epochs'        : settings['nb_epochs'],        # max training epochs
+  'early_stop_epoch' : settings['early_stop_epoch'], # stop after n epochs w/o improvement on val set
+  'bidirectional'    : settings['bidirectional'],
+  'attention'        : settings['attention']
 }
 # Params configured for tuning
 search_space = {
