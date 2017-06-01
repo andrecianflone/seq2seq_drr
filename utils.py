@@ -127,3 +127,14 @@ class Callback():
       return True
     else:
       return False
+
+class TrainEmbeddings():
+  """ Retrain embeddings on dataset for x epochs """
+  def __init__(self):
+    self.embeddings_original
+    self.vocab
+    self.inv_vocab
+    pass
+
+  def train():
+    pass
