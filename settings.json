@@ -1,5 +1,5 @@
 {
-  "hyperparams" : {
+  "hp" : {
     "batch_size"       : "32",
     "cell_units"       : "64",
     "dec_out_units"    : "64",

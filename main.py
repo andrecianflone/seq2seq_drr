@@ -192,15 +192,15 @@ def language_model_class_loss():
 ###############################################################################
 # Default params
 hyperparams = {
-  'batch_size'       : settings['batch_size'],       # training batch size
-  'cell_units'       : settings['cell_units'],       # hidden layer size
-  'dec_out_units'    : settings['dec_out_units'],    # output from decoder
-  'num_layers'       : settings['num_layers'],       # not used
-  'keep_prob'        : settings['keep_prob'],        # dropout keep probability
-  'nb_epochs'        : settings['nb_epochs'],        # max training epochs
-  'early_stop_epoch' : settings['early_stop_epoch'], # stop after n epochs w/o improvement on val set
-  'bidirectional'    : settings['bidirectional'],
-  'attention'        : settings['attention']
+  'batch_size'       : settings['hp']['batch_size'],       # training batch size
+  'cell_units'       : settings['hp']['cell_units'],       # hidden layer size
+  'dec_out_units'    : settings['hp']['dec_out_units'],    # output from decoder
+  'num_layers'       : settings['hp']['num_layers'],       # not used
+  'keep_prob'        : settings['hp']['keep_prob'],        # dropout keep probability
+  'nb_epochs'        : settings['hp']['nb_epochs'],        # max training epochs
+  'early_stop_epoch' : settings['hp']['early_stop_epoch'], # stop after n epochs w/o improvement on val set
+  'bidirectional'    : settings['hp']['bidirectional'],
+  'attention'        : settings['hp']['attention']
 }
 # Params configured for tuning
 search_space = {

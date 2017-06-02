@@ -473,31 +473,31 @@ def settings(path):
   settings['emb_trainable'] = parse_bool(settings['emb_trainable'])
 
   # Fix training batch size
-  settings['batch_size'] = parse_int(settings['batch_size'])
+  settings['hp']['batch_size'] = parse_int(settings['hp']['batch_size'])
 
   # Fix hidden layer size
-  settings['cell_units'] = parse_int(settings['cell_units'])
+  settings['hp']['cell_units'] = parse_int(settings['hp']['cell_units'])
 
   # Fix output from decoder
-  settings['dec_out_units'] = parse_int(settings['dec_out_units'])
+  settings['hp']['dec_out_units'] = parse_int(settings['hp']['dec_out_units'])
 
   # Fix num layers
-  settings['num_layers'] = parse_int(settings['num_layers'])
+  settings['hp']['num_layers'] = parse_int(settings['hp']['num_layers'])
 
   # Fix dropout keep probability
-  settings['keep_prob'] = parse_int(settings['keep_prob'])
+  settings['hp']['keep_prob'] = parse_int(settings['hp']['keep_prob'])
 
   # Fix max training epochs
-  settings['nb_epochs'] = parse_int(settings['nb_epochs'])
+  settings['hp']['nb_epochs'] = parse_int(settings['hp']['nb_epochs'])
 
   # Fix stop after n epochs w/o improvement on val set
-  settings['early_stop_epoch']
+  settings['hp']['early_stop_epoch'] = parse_int(settings['hp']['early_stop_epoch']
 
   # Fix bidirectional
-  settings['bidirectional'] = parse_bool(settings['bidirectional'])
+  settings['hp']['bidirectional'] = parse_bool(settings['hp']['bidirectional'])
 
   # Fix attention
-  settings['attention'] = parse_bool(settings['attention'])
+  settings['hp']['attention'] = parse_bool(settings['hp']['attention'])
 
   return settings
 
