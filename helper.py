@@ -485,13 +485,13 @@ def settings(path):
   settings['hp']['num_layers'] = parse_int(settings['hp']['num_layers'])
 
   # Fix dropout keep probability
-  settings['hp']['keep_prob'] = parse_int(settings['hp']['keep_prob'])
+  settings['hp']['keep_prob'] = parse_float(settings['hp']['keep_prob'])
 
   # Fix max training epochs
   settings['hp']['nb_epochs'] = parse_int(settings['hp']['nb_epochs'])
 
   # Fix stop after n epochs w/o improvement on val set
-  settings['hp']['early_stop_epoch'] = parse_int(settings['hp']['early_stop_epoch']
+  settings['hp']['early_stop_epoch'] = parse_int(settings['hp']['early_stop_epoch'])
 
   # Fix bidirectional
   settings['hp']['bidirectional'] = parse_bool(settings['hp']['bidirectional'])
@@ -514,3 +514,9 @@ def parse_int(val):
     return None
   else:
     return int(val)
+
+def parse_float(val):
+  if val == "None":
+    return None
+  else:
+    return float(val)

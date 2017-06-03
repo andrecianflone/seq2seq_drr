@@ -257,8 +257,8 @@ class BasicEncDec():
     attn_cell = tf.contrib.seq2seq.AttentionWrapper(
         cell = cell,# Instance of RNNCell
         attention_mechanism = attn_mech, # Instance of AttentionMechanism
-        attention_size = attn_units, # Int, depth of attention (output) tensor
-        attention_history=False, # whether to store history in final output
+        attention_layer_size = attn_units, # Int, depth of attention (output) tensor
+        alignment_history =False, # whether to store history in final output
         name="attention_wrapper")
 
     # TrainingHelper does no sampling, only uses inputs
@@ -283,7 +283,8 @@ class BasicEncDec():
 
     # Perform dynamic decoding with decoder object
     # Outputs is a BasicDecoder object with properties rnn_output and sample_id
-    outputs, final_state = tf.contrib.seq2seq.dynamic_decode(decoder)
+    outputs, final_state, final_sequence_lengths= \
+                                    tf.contrib.seq2seq.dynamic_decode(decoder)
     return outputs.rnn_output, final_state.attention
 
   def decoder_inference(self, cell, x, seq_len, encoder_state,bos_id, eos_id,
