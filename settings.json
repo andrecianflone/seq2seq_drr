@@ -13,7 +13,7 @@
   "use_dataset" : "one_v_all",
   "this_relation" : "Expansion",
   "max_vocab" : "None",
-  "random_init_unknown" : "False",
+  "random_init_unknown" : "True",
   "unknown_tag" : "<unk>",
   "pad_tag" : "<pad>",
   "bos_tag" : "<bos>",
