@@ -1,3 +1,7 @@
+\----------------
+From the [tf tutorial](https://www.tensorflow.org/tutorials/word2vec#vector-representations-of-words) with files originally from the tensorflow [embedding directory](https://github.com/tensorflow/models/tree/master/tutorials/embedding) in github
+\----------------
+
 This directory contains models for unsupervised training of word embeddings
 using the model described in:
 
