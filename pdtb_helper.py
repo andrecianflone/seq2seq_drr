@@ -118,6 +118,7 @@ def _extract_disc(pdtb, relation, sections, types, mapping, new_label,
     types: such as Implicit
     mapping: dictionary, map to this relation first
   """
+  #TODO if no sections, take all sections
   data_set = []
   for disc in pdtb:
     # Skip if not valid type
