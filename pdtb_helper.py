@@ -57,7 +57,7 @@ def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True)
     # pos_ids = [disc['ID'] for disc in positive_set]
     pos_ids = set() # set for fast lookup
     for disc in positive_set:
-      pos_ids.update(disc['ID'])
+      pos_ids.add(disc['ID'])
 
     # Get negative set
     print('Getting negative for: ', relation)
@@ -285,7 +285,7 @@ if __name__ == "__main__":
 
   print('Getting training set')
   train_data = make_data_set(\
-            pdtb='data/large_relations.json',
+            pdtb='data/large_relations_small.json',
             mapping='data/map_pdtb_top.json',
             sampling="down",
             equal_negative=True)
