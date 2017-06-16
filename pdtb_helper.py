@@ -285,7 +285,7 @@ if __name__ == "__main__":
 
   print('Getting training set')
   train_data = make_data_set(\
-            pdtb='data/large_relations_small.json',
+            pdtb='data/large_relations.json',
             mapping='data/map_pdtb_top.json',
             sampling="down",
             equal_negative=True)
