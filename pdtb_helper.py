@@ -46,15 +46,18 @@ def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True)
 
   # Only these types
   types = ['Implicit', 'EntRel', 'Explicit']
+  print('Getting relations for these types: ', types)
   final_set = []
 
   for relation in relations:
+    print('Getting positive for: ', relation)
     # Get positive set
     positive_set = _extract_disc(\
                               pdtb, relation, rng, types, mapping, 'positive')
     pos_ids = [disc['ID'] for disc in positive_set]
 
     # Get negative set
+    print('Getting negative for: ', relation)
     neg_relations = relations.copy()
     neg_relations.remove(relation)
     negative_set = _extract_disc(\
@@ -174,9 +177,13 @@ def _extract_disc(pdtb, relation, sections, types, mapping, new_label,
 
 def _list_of_dict(file_path):
   dataset = []
+  line_count=1
   with codecs.open(file_path, encoding='utf-8') as f:
     for line in f:
       j = json.loads(line)
+      # If no id, add ID from line number
+      j['ID'] = line_count
+      line_count += 1
       dataset.append(j)
   return dataset
 
@@ -275,11 +282,13 @@ if __name__ == "__main__":
 
   print('Getting training set')
   train_data = make_data_set(\
-            pdtb='data/large_relations_small_test.json',
+            pdtb='data/large_relations.json',
             mapping='data/map_pdtb_top.json',
             sampling="down",
             equal_negative=True)
-  dict_to_json(train_data, 'data/large_majid_one_v_all_train.json')
+  output_path = 'data/large_majid_one_v_all_train.json'
+  print('Saving to ', output_path)
+  dict_to_json(train_data, output_path)
 
   # print('Getting training set')
   # train_range = range(2, 20+1)
