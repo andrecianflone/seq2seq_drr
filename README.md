@@ -87,6 +87,10 @@ Gated Relevance Network. Summary:
 |:------------|:-------------------------------------|------------|-------------|-----------|----------|
 | Shallow CNN | [Zhang et al 2015][Zhang et al 2015] | 33.22%     | 52.04%      | 69.59%    | 30.54%   |
 
+## Other refs
+- [Implicit Discourse Relation Classification via Multi-Task Neutral Networks, Liu et al 2016](https://www.aaai.org/ocs/index.php/AAAI/AAAI16/paper/view/11831/12018)
+- [One Vector is Not Enough: Entity-Augmented Distributional Semantics for Discourse Relations](https://arxiv.org/pdf/1411.6699.pdf)
+
 [Chen et al, 2016]: https://www.aclweb.org/anthology/P/P16/P16-1163.pdf
 [PDTB corpus]: https://www.seas.upenn.edu/~pdtb/papers/pdtb-lrec08.pdf
 [Zhang et al 2015]: http://www.anthology.aclweb.org/D/D15/D15-1266.pdf

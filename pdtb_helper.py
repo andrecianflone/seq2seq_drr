@@ -26,7 +26,7 @@ def scan_folder(directory, output_file):
         print("*****Process terminated*****")
         sys.exit()
 
-def make_data_set(pdtb, mapping, rng, sampling="down", equal_negative=True):
+def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True):
   """ From the master json, create datasets of positive/negative
   Arg:
     sampling: if equal_negative is true, "down" will downsample largest,
@@ -45,7 +45,7 @@ def make_data_set(pdtb, mapping, rng, sampling="down", equal_negative=True):
   pdtb = _list_of_dict(pdtb)
 
   # Only these types
-  types = ['Implicit', 'EntRel']
+  types = ['Implicit', 'EntRel', 'Explicit']
   final_set = []
 
   for relation in relations:
@@ -125,9 +125,11 @@ def _extract_disc(pdtb, relation, sections, types, mapping, new_label,
     tp = disc['Type']
     if tp not in types: continue
 
-    # Skip if not section we want
-    section = int(disc['Section'])
-    if section not in sections: continue
+    # Filter section only if argument provided
+    if sections is not None:
+      # Skip if not section we want
+      section = int(disc['Section'])
+      if section not in sections: continue
 
     # Add the EntRel as sense
     if disc['Type'] == 'EntRel': disc['Sense'] = ['EntRel']
@@ -272,31 +274,39 @@ if __name__ == "__main__":
   # print('Done! Relations saved to: ', output)
 
   print('Getting training set')
-  train_range = range(2, 20+1)
   train_data = make_data_set(\
-            pdtb='data/all_pdtb.json',
+            pdtb='data/large_relations_small_test.json',
             mapping='data/map_pdtb_top.json',
-            rng=train_range,
             sampling="down",
             equal_negative=True)
-  dict_to_json(train_data, 'data/one_v_all_train.json')
+  dict_to_json(train_data, 'data/large_majid_one_v_all_train.json')
 
-  print('Getting dev set')
-  dev_range = range(0, 1+1)
-  dev_data = make_data_set(\
-            pdtb='data/all_pdtb.json',
-            mapping='data/map_pdtb_top.json',
-            rng=dev_range,
-            sampling=None,
-            equal_negative=False)
-  dict_to_json(dev_data, 'data/one_v_all_dev.json')
+  # print('Getting training set')
+  # train_range = range(2, 20+1)
+  # train_data = make_data_set(\
+            # pdtb='data/all_pdtb.json',
+            # mapping='data/map_pdtb_top.json',
+            # rng=train_range,
+            # sampling="down",
+            # equal_negative=True)
+  # dict_to_json(train_data, 'data/one_v_all_train.json')
 
-  print('Getting test set')
-  test_range = range(21, 22+1)
-  test_data = make_data_set(\
-            pdtb='data/all_pdtb.json',
-            mapping='data/map_pdtb_top.json',
-            rng=test_range,
-            sampling=None,
-            equal_negative=False)
-  dict_to_json(test_data, 'data/one_v_all_test.json')
+  # print('Getting dev set')
+  # dev_range = range(0, 1+1)
+  # dev_data = make_data_set(\
+            # pdtb='data/all_pdtb.json',
+            # mapping='data/map_pdtb_top.json',
+            # rng=dev_range,
+            # sampling=None,
+            # equal_negative=False)
+  # dict_to_json(dev_data, 'data/one_v_all_dev.json')
+
+  # print('Getting test set')
+  # test_range = range(21, 22+1)
+  # test_data = make_data_set(\
+            # pdtb='data/all_pdtb.json',
+            # mapping='data/map_pdtb_top.json',
+            # rng=test_range,
+            # sampling=None,
+            # equal_negative=False)
+  # dict_to_json(test_data, 'data/one_v_all_test.json')
