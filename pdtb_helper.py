@@ -57,7 +57,7 @@ def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True)
     # pos_ids = [disc['ID'] for disc in positive_set]
     pos_ids = set() # set for fast lookup
     for disc in positive_set:
-      post_ids.update(disc['ID'])
+      pos_ids.update(disc['ID'])
 
     # Get negative set
     print('Getting negative for: ', relation)
