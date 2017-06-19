@@ -21,7 +21,8 @@
   "emb_trainable" : "False",
   "embedding" : {
     "model_path" : "data/google_news_300.bin",
-    "small_model_path" : "data/embedding_pdtb.json"
+    "small_model_path_old" : "data/embedding_pdtb.json",
+    "small_model_path" : "data/embedding_large_set.json"
   },
   "conll" : {
     "datasets" : {
@@ -35,7 +36,7 @@
   },
   "one_v_all" : {
     "datasets" : {
-      "training_set"   : {"short_name":"train","path":"data/one_v_all_train.json"},
+      "training_set"   : {"short_name":"train","path":"data/large_relations_one_v_all_train.json"},
       "validation_set" : {"short_name":"val","path":"data/one_v_all_dev.json"},
       "test_set"       : {"short_name":"test","path":"data/one_v_all_test.json"}
     },
