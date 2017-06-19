@@ -340,6 +340,7 @@ class Preprocess():
     x = list(); y = list(); arg_len=list(); decoder_targets=list();
     discourse_list = list()
     with codecs.open(path, encoding='utf8') as pdfile:
+      invalid = 0
       for line in pdfile:
         j = json.loads(line)
 
@@ -358,17 +359,10 @@ class Preprocess():
         decoder_targets.append(dec_target)
 
         l1 = len(arg1)
-        if l1 < 1:
-          print("LENGTH ERROR for this discourse in arg 1")
-          print("file: ", path)
-          print(line)
-          sys.exit()
         l2 = len(arg2)
-        if l2 < 1:
-          print("LENGTH ERROR for this discourse in arg 2")
-          print("file: ", path)
-          print(line)
-          sys.exit()
+        if l1 < 1 or l2 < 1:
+          invalid += 1
+          continue
 
         arg1.extend(arg2)
         # Return original sense, mapping done later
@@ -381,6 +375,8 @@ class Preprocess():
         x.append(arg1)
         y.append(label)
         arg_len.append((l1,l2))
+    print("There were ", invalid, " discourses in file:")
+    print(path)
     return x, y, arg_len, decoder_targets, discourse_list
 
   def add_tags(self, seq_list):
