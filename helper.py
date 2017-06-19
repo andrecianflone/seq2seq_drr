@@ -358,13 +358,13 @@ class Preprocess():
         decoder_targets.append(dec_target)
 
         l1 = len(arg1)
-        if l1 <= 1:
+        if l1 < 1:
           print("LENGTH ERROR for this discourse in arg 1")
           print("file: ", path)
           print(line)
           sys.exit()
         l2 = len(arg2)
-        if l2 <= 1:
+        if l2 < 1:
           print("LENGTH ERROR for this discourse in arg 2")
           print("file: ", path)
           print(line)
