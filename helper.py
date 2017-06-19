@@ -5,6 +5,7 @@ from collections import Counter
 import codecs
 from pprint import pprint
 import random
+import sys
 import os.path
 from conll_utils.scorer import f1_non_explicit
 
