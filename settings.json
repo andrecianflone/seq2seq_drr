@@ -11,7 +11,7 @@
     "attention"        : "True"
   },
   "use_dataset" : "one_v_all",
-  "this_relation" : "Expansion",
+  "this_relation" : "Comparison",
   "max_vocab" : "None",
   "random_init_unknown" : "True",
   "unknown_tag" : "<unk>",
