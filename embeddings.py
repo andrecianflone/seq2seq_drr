@@ -107,7 +107,7 @@ class Embeddings():
     emb_dim = len(model['the'])
     return self._load_embedding(vocab,model,emb_dim)
 
-  def _load_embedding(self, vocab, model, emb_dim):
+  def _load_embedding(self, vocab, model, emb_dim, notify=False):
     out_of_model = 0 # keep track how many random words
     emb_matrix = np.zeros((len(vocab), emb_dim), dtype=np.float32)
     unk_emb = np.random.rand(emb_dim)
@@ -118,10 +118,12 @@ class Embeddings():
       except: # If not in Embedding
         out_of_model += 1
         if self.random_init_unknown == True:
-          print("word '{}' was randomly initialized".format(k))
+          if notify == True:
+            print("word '{}' was randomly initialized".format(k))
           emb_matrix[v] = np.random.rand(emb_dim)
         else:
-          print("word '{}' was replaced by unk tag".format(k))
+          if notify == True:
+            print("word '{}' was replaced by unk tag".format(k))
           emb_matrix[v] = unk_emb
 
     del model # Hint to Python to reduce memory
