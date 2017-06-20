@@ -375,7 +375,7 @@ class Preprocess():
         x.append(arg1)
         y.append(label)
         arg_len.append((l1,l2))
-    print("There were ", invalid, " discourses in file:")
+    print("There were ", invalid, " invalid discourses in file:")
     print(path)
     return x, y, arg_len, decoder_targets, discourse_list
 

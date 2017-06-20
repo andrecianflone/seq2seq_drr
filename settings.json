@@ -1,8 +1,8 @@
 {
   "hp" : {
     "batch_size"       : "32",
-    "cell_units"       : "64",
-    "dec_out_units"    : "64",
+    "cell_units"       : "32",
+    "dec_out_units"    : "32",
     "num_layers"       : "2",
     "keep_prob"        : "0.5",
     "nb_epochs"        : "70",
@@ -11,18 +11,18 @@
     "attention"        : "True"
   },
   "use_dataset" : "one_v_all",
-  "this_relation" : "Comparison",
+  "this_relation" : "Expansion",
   "max_vocab" : "None",
   "random_init_unknown" : "True",
   "unknown_tag" : "<unk>",
   "pad_tag" : "<pad>",
   "bos_tag" : "<bos>",
   "eos_tag" : "<eos>",
-  "emb_trainable" : "False",
+  "emb_trainable" : "True",
   "embedding" : {
     "model_path" : "data/google_news_300.bin",
-    "small_model_path_old" : "data/embedding_pdtb.json",
-    "small_model_path" : "data/embedding_large_set.json"
+    "small_model_path" : "data/embedding_pdtb.json",
+    "small_model_path_large" : "data/embedding_large_set.json"
   },
   "conll" : {
     "datasets" : {
@@ -34,9 +34,10 @@
     "label_key" : "Sense",
     "mapping"   : "data/map_proper_conll.json"
   },
+  "training_set_large"   : {"short_name":"train","path":"data/large_relations_one_v_all_train.json"},
   "one_v_all" : {
     "datasets" : {
-      "training_set"   : {"short_name":"train","path":"data/large_relations_one_v_all_train.json"},
+      "training_set"   : {"short_name":"train","path":"data/one_v_all_train.json"},
       "validation_set" : {"short_name":"val","path":"data/one_v_all_dev.json"},
       "test_set"       : {"short_name":"test","path":"data/one_v_all_test.json"}
     },
