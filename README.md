@@ -89,24 +89,24 @@ Gated Relevance Network. Summary:
 
 **[CoNLL][conll] English dataset (PDTB), low-level, Implicit F1 score**
 
-ID         | Blind | Test | Dev
------------|-------|------|
-aarjay     | 9.95  | 15.6 | 36.85
-BIT        | 19.3  | 16.5 | 17.36
-clac       | 27.7  | 28.1 | 37.12
-ecnucs     | 34.1  | 40.9 | 46.42
-goethe     | 31.8  | 37.6 | 45.42
-gtnlp      | 36.7  | 34.9 | 40.72
-gw0        | 33.0  | 30.2 | 34.58
-gw0        | 21.2  | 18.5 | 35.11
-nguyenlab  | 31.4  | 28.8 | 34.31
-oslopots   | 33.8  | 33.7 | 43.12
-PurdueNLP  | 29.1  | 34.4 | 38.05
-steven     | 23.5  | 20.5 | 26.68
-tao0920    | 35.3  | 38.2 | 46.33
-tbmihaylov | 34.5  | 39.1 | 40.32
-ykido      | 32.3  | 22.6 | 29.11
-ttr        | 37.6  | 36.1 | 40.32
+| ID         | Blind | Test | Dev   |
+|------------|-------|------|-------|
+| aarjay     | 9.95  | 15.6 | 36.85 |
+| BIT        | 19.3  | 16.5 | 17.36 |
+| clac       | 27.7  | 28.1 | 37.12 |
+| ecnucs     | 34.1  | 40.9 | 46.42 |
+| goethe     | 31.8  | 37.6 | 45.42 |
+| gtnlp      | 36.7  | 34.9 | 40.72 |
+| gw0        | 33.0  | 30.2 | 34.58 |
+| gw0        | 21.2  | 18.5 | 35.11 |
+| nguyenlab  | 31.4  | 28.8 | 34.31 |
+| oslopots   | 33.8  | 33.7 | 43.12 |
+| PurdueNLP  | 29.1  | 34.4 | 38.05 |
+| steven     | 23.5  | 20.5 | 26.68 |
+| tao0920    | 35.3  | 38.2 | 46.33 |
+| tbmihaylov | 34.5  | 39.1 | 40.32 |
+| ykido      | 32.3  | 22.6 | 29.11 |
+| ttr        | 37.6  | 36.1 | 40.32 |
 
 ## Other refs
 - [Implicit Discourse Relation Classification via Multi-Task Neutral Networks, Liu et al 2016](https://www.aaai.org/ocs/index.php/AAAI/AAAI16/paper/view/11831/12018)
