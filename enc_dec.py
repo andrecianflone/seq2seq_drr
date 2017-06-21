@@ -6,7 +6,7 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
   def __init__(self, num_units, dec_out_units, max_seq_len, num_classes,
-      embedding, emb_dim, emb_trainable=False):
+      embedding, emb_dim, bidirectional=True, emb_trainable=False):
     self.num_classes = num_classes
     self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32

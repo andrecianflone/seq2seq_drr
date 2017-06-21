@@ -127,7 +127,7 @@ class Preprocess():
         max_arg_len, # max length of each argument
         maxlen, # maximum total length of input
         settings, # settings file as dict
-        relation=None, # include only these relations
+        relation=None, # include only this relation
         max_vocab=None, # limit vocab size
         random_negative=False,
         split_input=True, # boolean, split input into separate numpy arrays
@@ -139,7 +139,11 @@ class Preprocess():
         vocab=None, # If none, will create the vocab
         inv_vocab=None): # If none, generates inverse vocab
 
-    self.relation = relation
+    if relation == "all":
+      self.relation = None
+    else:
+      self.relation = relation
+
     dataset=settings[dataset_name]
 
     # self.train_file   = training_set
