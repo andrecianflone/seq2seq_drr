@@ -5,8 +5,20 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
-  def __init__(self, num_units, dec_out_units, max_seq_len, num_classes,
-      embedding, emb_dim, bidirectional=True, emb_trainable=False):
+  def __init__(self,num_units, dec_out_units, max_seq_len, num_classes,
+      embedding, emb_dim, cell_type, bidirectional=True, emb_trainable=False):
+    """
+    Args:
+      num_units : dimension of recurrent cells
+      dec_out_units : dimension of decoder output
+      max_seq_len : maximum length of a sequence
+      num_classes : number of classes
+      embedding : embedding matrix as numpy array
+      emb_dim : size of an embedding
+      cell_type : type of recurrent cell, LSTM or GRU
+      bidirectional : if false, then unidirectional and no concat
+      emb_trainable : if true embedding vectors are updated during training
+    """
     self.num_classes = num_classes
     self.keep_prob = tf.placeholder(tf.float32)
     self.float_type = tf.float32
@@ -47,19 +59,9 @@ class BasicEncDec():
     ############################
     # Model (magic is here)
     ############################
-    # cell_enc_fw = GRUCell(num_units)
-    cell_enc_fw = BasicLSTMCell(num_units)
-    cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
-    # cell_enc_bw = GRUCell(num_units)
-    cell_enc_bw = BasicLSTMCell(num_units)
-    cell_enc_bw = DropoutWrapper(cell_enc_bw, output_keep_prob=self.keep_prob)
-    # cell_enc = GRUCell(num_units)
-    cell_enc = BasicLSTMCell(num_units)
-    cell_enc = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
-
-    cell_dec = GRUCell(decoder_num_units)
-    cell_dec = DropoutWrapper(cell_dec, output_keep_prob=self.keep_prob)
-    # should add second additional layer here
+    # Cell setup
+    cell_enc_fw, cell_enc_bw, cell_enc, cell_dec = \
+        self.cell_setup(num_units, decoder_num_units, cell_type=cell_type)
 
     # Get data from encoder: bidirectional
     self.encoded_outputs, self.encoded_state = self.encoder_bi(cell_enc_fw, \
@@ -133,6 +135,25 @@ class BasicEncDec():
         inputs = tf.nn.embedding_lookup(embedding_tensor, word_ids)
     return inputs
 
+  def cell_setup(self, num_units, decoder_num_units, cell_type="LSTM"):
+    if cell_type=="LSTM":
+      cell_enc_fw = BasicLSTMCell(num_units)
+      cell_enc_bw = BasicLSTMCell(num_units)
+      cell_enc = BasicLSTMCell(num_units)
+      cell_dec = BasicLSTMCell(decoder_num_units)
+    elif cell_type=="GRU":
+      cell_enc_fw = GRUCell(num_units)
+      cell_enc_bw = GRUCell(num_units)
+      cell_enc = GRUCell(num_units)
+      cell_dec = GRUCell(decoder_num_units)
+
+    # Dropout wrapper
+    cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
+    cell_enc_bw = DropoutWrapper(cell_enc_bw, output_keep_prob=self.keep_prob)
+    cell_enc = DropoutWrapper(cell_enc, output_keep_prob=self.keep_prob)
+    cell_dec = DropoutWrapper(cell_dec, output_keep_prob=self.keep_prob)
+    return cell_enc_fw, cell_enc_bw, cell_enc, cell_dec
+
   def encoder_one_way(self, cell, x, seq_len, init_state=None, scope="encoder"):
     """ Dynamic encoder for one direction
     Returns:
@@ -172,12 +193,15 @@ class BasicEncDec():
       outputs = tf.concat(outputs,2)
       outputs.set_shape([None, None, self.bi_encoder_hidden])
       # If LSTM cell, then "state" is not a tuple of Tensors but an
-      # LSTMStateTuple of "c" and "h", so we grab "h".
+      # LSTMStateTuple of "c" and "h". Need to concat separately then new
       if "LSTMStateTuple" in str(type(state[0])):
-        state = tf.concat([state[0][1],state[1][1]],axis=1)
+        c = tf.concat([state[0][0],state[1][0]],axis=1)
+        h = tf.concat([state[0][1],state[1][1]],axis=1)
+        state = tf.contrib.rnn.LSTMStateTuple(c,h)
       else:
         state = tf.concat(state,1)
-      state.set_shape([None, self.bi_encoder_hidden])
+        # Manually set shape to Tensor or all hell breaks loose
+        state.set_shape([None, self.bi_encoder_hidden])
     return outputs, state
 
   def emb_add_class(self, enc_embedded, classes):

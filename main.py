@@ -200,6 +200,7 @@ hyperparams = {
   'keep_prob'        : settings['hp']['keep_prob'],        # dropout keep probability
   'nb_epochs'        : settings['hp']['nb_epochs'],        # max training epochs
   'early_stop_epoch' : settings['hp']['early_stop_epoch'], # stop after n epochs w/o improvement on val set
+  'cell_type'        : settings['hp']['cell_type'],
   'bidirectional'    : settings['hp']['bidirectional'],
   'attention'        : settings['hp']['attention']
 }
@@ -248,6 +249,7 @@ def train(params):
           num_classes=data_class.num_classes,
           embedding=embedding,
           emb_dim=embedding.shape[1],
+          cell_type=params['cell_type'],
           emb_trainable=params['emb_trainable'])
 
   # Start training

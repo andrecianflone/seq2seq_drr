@@ -7,6 +7,7 @@
     "keep_prob"        : "0.3",
     "nb_epochs"        : "70",
     "early_stop_epoch" : "20",
+    "cell_type"        : "GRU",
     "bidirectional"    : "True",
     "attention"        : "True"
   },
