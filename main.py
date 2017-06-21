@@ -34,11 +34,12 @@ maxlen      = max_arg_len * 2 # max num of tokens per sample
 
 # Settings file
 settings = settings('settings.json')
+dataset_name = settings['use_dataset']
 
 data_class = Preprocess(
             # dataset_name='conll',
-            dataset_name = settings['use_dataset'],
-            relation = settings['this_relation'],
+            dataset_name = dataset_name,
+            relation = settings[dataset_name]['this_relation'],
             max_vocab = settings['max_vocab'],
             random_negative=False,
             max_arg_len=max_arg_len,
@@ -315,7 +316,7 @@ if __name__ == "__main__":
   if args.file_save: params['file_save'] = args.file_save
 
   params['dataset_name'] = settings['use_dataset']
-  params['relation'] = settings['this_relation']
+  params['relation'] = settings[dataset_name]['this_relation']
   params['random_init_unknown'] = settings['random_init_unknown']
   params['max_vocab'] = settings['max_vocab']
   params['emb_trainable'] = settings['emb_trainable']

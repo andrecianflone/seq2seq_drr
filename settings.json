@@ -4,14 +4,13 @@
     "cell_units"       : "32",
     "dec_out_units"    : "32",
     "num_layers"       : "2",
-    "keep_prob"        : "0.5",
+    "keep_prob"        : "0.3",
     "nb_epochs"        : "70",
     "early_stop_epoch" : "20",
     "bidirectional"    : "True",
     "attention"        : "True"
   },
-  "use_dataset" : "one_v_all",
-  "this_relation" : "Expansion",
+  "use_dataset" : "conll",
   "max_vocab" : "None",
   "random_init_unknown" : "True",
   "unknown_tag" : "<unk>",
@@ -31,6 +30,7 @@
       "test_set"       : {"short_name":"test","path":"data/test.json"},
       "blind_set"      : {"short_name":"blind","path":"data/blind.json"}
     },
+    "this_relation" : "all",
     "label_key" : "Sense",
     "mapping"   : "data/map_proper_conll.json"
   },
@@ -41,6 +41,7 @@
       "validation_set" : {"short_name":"val","path":"data/one_v_all_dev.json"},
       "test_set"       : {"short_name":"test","path":"data/one_v_all_test.json"}
     },
+    "this_relation" : "Expansion",
     "label_key" : "Class",
     "mapping"   : "data/map_one_v_all.json"
   }
