@@ -6,8 +6,8 @@
     "num_layers"       : "2",
     "keep_prob"        : "0.3",
     "nb_epochs"        : "70",
-    "early_stop_epoch" : "20",
-    "cell_type"        : "GRU",
+    "early_stop_epoch" : "10",
+    "cell_type"        : "LSTM",
     "bidirectional"    : "True",
     "attention"        : "True"
   },
@@ -18,7 +18,7 @@
   "pad_tag" : "<pad>",
   "bos_tag" : "<bos>",
   "eos_tag" : "<eos>",
-  "emb_trainable" : "True",
+  "emb_trainable" : "False",
   "embedding" : {
     "model_path" : "data/google_news_300.bin",
     "small_model_path" : "data/embedding_pdtb.json",

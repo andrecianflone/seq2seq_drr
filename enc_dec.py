@@ -25,6 +25,7 @@ class BasicEncDec():
     self.int_type = tf.int32
     self.final_emb_dim = emb_dim + num_classes
     self.bi_encoder_hidden = num_units * 2
+    self.bidirectional = bidirectional
     decoder_num_units = num_units *2
 
     ############################
@@ -63,14 +64,15 @@ class BasicEncDec():
     cell_enc_fw, cell_enc_bw, cell_enc, cell_dec = \
         self.cell_setup(num_units, decoder_num_units, cell_type=cell_type)
 
-    # Get data from encoder: bidirectional
-    self.encoded_outputs, self.encoded_state = self.encoder_bi(cell_enc_fw, \
+    # Get encoder data
+    if self.bidirectional == True:
+      self.encoded_outputs, self.encoded_state = self.encoder_bi(cell_enc_fw, \
                             cell_enc_bw, self.enc_embedded, self.enc_input_len)
+    else:
+      self.encoded_outputs, self.encoded_state = self.encoder_one_way(cell_enc,\
+                            self.enc_embedded, self.enc_input_len)
 
-    # Get data from encoder: unidirectional
-    # self.encoded_outputs, self.encoded_state = self.encoder_one_way(cell_enc, \
-                            # self.enc_embedded, self.enc_input_len)
-    # Get data from decoder
+    # Get decoder data
     self.decoded_outputs, self.decoded_final_state = self.decoder_train_attn(
                             cell=cell_dec,
                             decoder_inputs=self.dec_embedded,
@@ -94,8 +96,7 @@ class BasicEncDec():
     self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
 
     self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
-    # TODO: try class loss across sequence, but classifier only uses last step
-    # in the sequence to label the argument.
+    # TODO: try pooling the whole attn result and class loss across sequence
 
     # GENERATION ##############
     # Outputs over vocab, for sequence

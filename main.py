@@ -223,7 +223,7 @@ def train(params):
   print('-' * 79)
   print('Current trial: {}'.format(current_trial))
   print('-' * 79)
-  tf.reset_default_graph() # reset the graph for each trial
+  # tf.reset_default_graph() # reset the graph for each trial
   batch_size = params['batch_size']
   train_set = dataset_dict['training_set']
   val_set = dataset_dict['validation_set']
@@ -242,18 +242,17 @@ def train(params):
   pickle.dump(trials, open("trials.p","wb"))
 
   # Declare model with hyperparams
-  model = BasicEncDec(\
-          num_units=params['cell_units'],
-          dec_out_units=params['dec_out_units'],
-          max_seq_len=max_arg_len,
-          num_classes=data_class.num_classes,
-          embedding=embedding,
-          emb_dim=embedding.shape[1],
-          cell_type=params['cell_type'],
-          emb_trainable=params['emb_trainable'])
-
+  with tf.Graph().as_default(), tf.Session() as sess:
+    model = BasicEncDec(\
+            num_units=params['cell_units'],
+            dec_out_units=params['dec_out_units'],
+            max_seq_len=max_arg_len,
+            num_classes=data_class.num_classes,
+            embedding=embedding,
+            emb_dim=embedding.shape[1],
+            cell_type=params['cell_type'],
+            emb_trainable=params['emb_trainable'])
   # Start training
-  with tf.Session() as sess:
     tf.global_variables_initializer().run()
     for epoch in range(params['nb_epochs']):
       prog.epoch_start()
