@@ -69,11 +69,12 @@ class BasicEncDec():
       self.encoded_outputs, self.encoded_state = self.encoder_bi(cell_enc_fw, \
                             cell_enc_bw, self.enc_embedded, self.enc_input_len)
     else:
-      self.encoded_outputs, self.encoded_state = self.encoder_one_way(cell_enc,\
-                            self.enc_embedded, self.enc_input_len)
+      self.encoded_outputs, self.encoded_state = self.encoder_one_way(\
+                            cell_enc, self.enc_embedded, self.enc_input_len)
 
     # Get decoder data
-    self.decoded_outputs, self.decoded_final_state = self.decoder_train_attn(
+    self.decoded_outputs, self.decoded_final_state, self.decoded_final_seq_len=\
+                          self.decoder_train_attn(
                             cell=cell_dec,
                             decoder_inputs=self.dec_embedded,
                             seq_len_enc=self.enc_input_len,
@@ -83,11 +84,10 @@ class BasicEncDec():
                             mem_units=self.bi_encoder_hidden,
                             attn_units=dec_out_units)
 
-
     # CLASSIFICATION ##########
     # Output for classification, use last decoder hidden state
     self.class_logits = self.output_logits(
-        self.decoded_final_state, dec_out_units, num_classes, "class_softmax")
+        self.decoded_final_state.attention, dec_out_units, num_classes, "class_softmax")
 
     # Classification loss
     self.class_loss = self.classification_loss(self.classes, self.class_logits)
@@ -101,7 +101,7 @@ class BasicEncDec():
     # GENERATION ##############
     # Outputs over vocab, for sequence
     self.seq_logits = self.sequence_output_logits(
-                  self.decoded_outputs, dec_out_units, vocab_size)
+                  self.decoded_outputs.rnn_output, dec_out_units, vocab_size)
     self.seq_softmax_logits = tf.nn.softmax(self.seq_logits)
 
     # Generator loss per sample
@@ -310,7 +310,8 @@ class BasicEncDec():
     # Outputs is a BasicDecoder object with properties rnn_output and sample_id
     outputs, final_state, final_sequence_lengths= \
                                     tf.contrib.seq2seq.dynamic_decode(decoder)
-    return outputs.rnn_output, final_state.attention
+    return outputs, final_state, final_sequence_lengths
+    # return outputs.rnn_output, final_state.attention
 
   def decoder_inference(self, cell, x, seq_len, encoder_state,bos_id, eos_id,
       max_seq, vocab_size, scope="inference"):
