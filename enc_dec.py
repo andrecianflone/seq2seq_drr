@@ -85,6 +85,18 @@ class BasicEncDec():
                             attn_units=dec_out_units)
 
     # CLASSIFICATION ##########
+    # Pool and logits
+    features = tf.expand_dims(self.decoded_outputs.rnn_output, axis=-1)
+    self.pooled = tf.nn.max_pool(
+        value=features, # [batch, height, width, channels]
+        ksize=[1, 1, dec_out_units, 1],
+        strides=[1, 1, 1, 1],
+        padding='VALID',
+        name="pool")
+    # Get rid of last 2 empty dimensions
+    self.pooled = tf.squeeze(self.pooled,axis=[2,3],name="pool_squeeze")
+    # self.class_logits_seq
+
     # Output for classification, use last decoder hidden state
     self.class_logits = self.output_logits(
         self.decoded_final_state.attention, dec_out_units, num_classes, "class_softmax")
@@ -372,6 +384,11 @@ class BasicEncDec():
       logits = tf.matmul(decoded_outputs, w) + b
     return logits
 
+  def sequence_class_logits(self, decoded_outputs):
+    """ Logits for the sequence """
+    # TODO
+    pass
+
   def sequence_loss(self, logits, targets, weight_mask):
     """ Loss on sequence, given logits and one-hot targets
     Default loss below is softmax cross ent on logits
@@ -411,12 +428,6 @@ class BasicEncDec():
     class_loss = entropy_fn(
                       labels=classes_max,
                       logits=classes_logits)
-    return class_loss
-
-  def sequence_classification_loss(self, classes_true, classes_logits):
-    """ Class loss across the whole sequence. Force each decoder element to
-    predict the class instead of only the next hidden state"""
-    # TODO
     return class_loss
 
   def log_prob(self, logits, targets):
