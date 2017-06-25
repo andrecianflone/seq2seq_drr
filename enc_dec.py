@@ -85,7 +85,7 @@ class BasicEncDec():
                             attn_units=dec_out_units)
 
     # CLASSIFICATION ##########
-    # Pool and logits
+    # Pool and logits###########
     features = tf.expand_dims(self.decoded_outputs.rnn_output, axis=-1)
     self.pooled = tf.nn.max_pool(
         value=features, # [batch, height, width, channels]
@@ -95,7 +95,21 @@ class BasicEncDec():
         name="pool")
     # Get rid of last 2 empty dimensions
     self.pooled = tf.squeeze(self.pooled,axis=[2,3],name="pool_squeeze")
-    # self.class_logits_seq
+    # Pad
+    pad = max_seq_len
+    paddings = [[0,0],[0,pad]]
+    # tf.pad(
+      # tensor,
+      # paddings=paddings,
+      # mode='CONSTANT',
+      # name=None)
+    # Logits
+    # w = tf.get_variable("weights", [num_units, vocab_size],
+        # dtype=self.float_type, initializer=glorot())
+    # b = tf.get_variable("biases", [vocab_size],
+        # dtype=self.float_type, initializer=tf.constant_initializer(0.0))
+    # logits = tf.matmul(decoded_outputs, w) + b
+    # Pool and logits###########
 
     # Output for classification, use last decoder hidden state
     self.class_logits = self.output_logits(
@@ -321,7 +335,9 @@ class BasicEncDec():
     # Perform dynamic decoding with decoder object
     # Outputs is a BasicDecoder object with properties rnn_output and sample_id
     outputs, final_state, final_sequence_lengths= \
-                                    tf.contrib.seq2seq.dynamic_decode(decoder)
+                                  tf.contrib.seq2seq.dynamic_decode(\
+                                  decoder=decoder,
+                                  impute_finished=True)
     return outputs, final_state, final_sequence_lengths
     # return outputs.rnn_output, final_state.attention
 
