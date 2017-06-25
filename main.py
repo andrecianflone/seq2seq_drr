@@ -71,7 +71,8 @@ embedding = emb.get_embedding_matrix(\
 ###############################################################################
 # Main stuff
 ###############################################################################
-def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shuffle):
+def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
+              shuffle):
   """ Calls models and yields results per batch """
   batches = make_batches(data, batch_size, num_batches, shuffle=shuffle)
   for batch in batches:
@@ -93,7 +94,8 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shu
 def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches, prog):
   """ Train 'model' using 'data' for a single epoch """
   fetch = [model.class_optimizer, model.class_cost]
-  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob, shuffle=True)
+  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches,
+                             keep_prob, shuffle=True)
   for result in batch_results:
     loss = result[1]
     prog.print_train(loss)
@@ -104,7 +106,8 @@ def classification_f1(sess, data, model, batch_size, num_batches_test):
   fetch = [model.batch_size, model.class_cost, model.y_pred, model.y_true]
   y_pred = np.zeros(data.size())
   y_true = np.zeros(data.size())
-  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches_test, keep_prob=1, shuffle=False)
+  batch_results = call_model(sess, model, data, fetch, batch_size,
+                             num_batches_test, keep_prob=1, shuffle=False)
   start_id = 0
   for i, result in enumerate(batch_results):
     batch_size                           = result[0]
@@ -136,7 +139,8 @@ def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
   fetch = [model.batch_size, model.class_cost]
   losses = np.zeros(num_batches_test) # to average the losses
   batch_w = np.zeros(num_batches_test) # batch weight
-  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob=1, shuffle=False)
+  batch_results = call_model(sess, model, data, fetch, batch_size, num_batches,
+                              keep_prob=1, shuffle=False)
   for i, result in enumerate(batch_results):
     # Keep track of losses to average later
     cur_b_size = result[0]
@@ -164,7 +168,8 @@ def language_model_class_loss():
           dec_len_test, dec_test, dec_mask_test]
     fetch = [model.batch_size, model.generator_loss, model.softmax_logits,
               model.dec_targets]
-    batch_results = call_model(sess, model, data, fetch, batch_size, num_batches_test, keep_prob=1, shuffle=False)
+    batch_results = call_model(sess, model, data, fetch, batch_size,
+                               num_batches_test, keep_prob=1, shuffle=False)
     j = 0
     for result in batch_results:
       cur_b_size = result[0]
@@ -197,18 +202,18 @@ hyperparams = {
   'cell_units'       : settings['hp']['cell_units'],       # hidden layer size
   'dec_out_units'    : settings['hp']['dec_out_units'],    # output from decoder
   'num_layers'       : settings['hp']['num_layers'],       # not used
-  'keep_prob'        : settings['hp']['keep_prob'],        # dropout keep probability
+  'keep_prob'        : settings['hp']['keep_prob'],        # dropout keep prob
   'nb_epochs'        : settings['hp']['nb_epochs'],        # max training epochs
-  'early_stop_epoch' : settings['hp']['early_stop_epoch'], # stop after n epochs w/o improvement on val set
+  'early_stop_epoch' : settings['hp']['early_stop_epoch'], # stop after n epochs
   'cell_type'        : settings['hp']['cell_type'],
   'bidirectional'    : settings['hp']['bidirectional'],
   'attention'        : settings['hp']['attention']
 }
 # Params configured for tuning
 search_space = {
-  'batch_size'    : hp.choice('batch_size', range(32, 128)),# training batch size
+  'batch_size'    : hp.choice('batch_size', range(32, 128)),
   'cell_units'    : hp.choice('cell_units', range(4, 200)), # hidden layer size
-  'dec_out_units' : hp.choice('dec_out_units', range(4, 300)), # output from decoder
+  'dec_out_units' : hp.choice('dec_out_units', range(4, 300)), #output from dec
   'num_layers'    : hp.choice('num_layers', range(1, 10)),  # not used
   'keep_prob'     : hp.uniform('keep_prob', 0.1, 1)  # dropout keep probability
 }
@@ -227,7 +232,8 @@ def train(params):
   batch_size = params['batch_size']
   train_set = dataset_dict['training_set']
   val_set = dataset_dict['validation_set']
-  prog = Progress(batches=train_set.num_batches(batch_size), progress_bar=True, bar_length=10)
+  prog = Progress(batches=train_set.num_batches(batch_size), progress_bar=True,
+                  bar_length=10)
   met = Metrics(monitor="val_f1")
   cb = Callback(params['early_stop_epoch'], met, prog)
 

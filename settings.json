@@ -11,7 +11,7 @@
     "bidirectional"    : "True",
     "attention"        : "True"
   },
-  "use_dataset" : "conll",
+  "use_dataset" : "one_v_all",
   "max_vocab" : "None",
   "random_init_unknown" : "True",
   "unknown_tag" : "<unk>",

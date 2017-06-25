@@ -85,35 +85,15 @@ class BasicEncDec():
                             attn_units=dec_out_units)
 
     # CLASSIFICATION ##########
-    # Pool and logits###########
-    features = tf.expand_dims(self.decoded_outputs.rnn_output, axis=-1)
-    self.pooled = tf.nn.max_pool(
-        value=features, # [batch, height, width, channels]
-        ksize=[1, 1, dec_out_units, 1],
-        strides=[1, 1, 1, 1],
-        padding='VALID',
-        name="pool")
-    # Get rid of last 2 empty dimensions
-    self.pooled = tf.squeeze(self.pooled,axis=[2,3],name="pool_squeeze")
-    # Pad
-    pad = max_seq_len
-    paddings = [[0,0],[0,pad]]
-    # tf.pad(
-      # tensor,
-      # paddings=paddings,
-      # mode='CONSTANT',
-      # name=None)
-    # Logits
-    # w = tf.get_variable("weights", [num_units, vocab_size],
-        # dtype=self.float_type, initializer=glorot())
-    # b = tf.get_variable("biases", [vocab_size],
-        # dtype=self.float_type, initializer=tf.constant_initializer(0.0))
-    # logits = tf.matmul(decoded_outputs, w) + b
-    # Pool and logits###########
+    self.class_logits = self.sequence_class_logits(\
+        decoded_outputs=self.decoded_outputs,
+        pool_size=dec_out_units,
+        max_seq_len=max_seq_len,
+        num_classes=num_classes)
 
     # Output for classification, use last decoder hidden state
-    self.class_logits = self.output_logits(
-        self.decoded_final_state.attention, dec_out_units, num_classes, "class_softmax")
+    # self.class_logits = self.output_logits(
+        # self.decoded_final_state.attention, dec_out_units, num_classes, "class_softmax")
 
     # Classification loss
     self.class_loss = self.classification_loss(self.classes, self.class_logits)
@@ -122,7 +102,6 @@ class BasicEncDec():
     self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
 
     self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
-    # TODO: try pooling the whole attn result and class loss across sequence
 
     # GENERATION ##############
     # Outputs over vocab, for sequence
@@ -281,11 +260,10 @@ class BasicEncDec():
   def decoder_train_attn(self, cell, decoder_inputs, seq_len_enc, seq_len_dec,
       encoder_state, attention_states, mem_units, attn_units):
     """
-    see: https://www.tensorflow.org/versions/r1.1/api_guides/python/contrib.seq2seq#Attention
     Args:
       cell: an instance of RNNCell.
       x: decoder inputs for training
-      seq_len_enc: seq. len. of encoder input, will ignore memories beyond seq len
+      seq_len_enc: seq. len. of encoder input, will ignore memories beyond this
       seq_len_dec: seq. len. of decoder input
       encoder_state: initial state for decoder
       attention_states: hidden states (from encoder) to attend over.
@@ -400,10 +378,30 @@ class BasicEncDec():
       logits = tf.matmul(decoded_outputs, w) + b
     return logits
 
-  def sequence_class_logits(self, decoded_outputs):
+  def sequence_class_logits(self, decoded_outputs, pool_size, max_seq_len, num_classes):
     """ Logits for the sequence """
-    # TODO
-    pass
+    features = tf.expand_dims(self.decoded_outputs.rnn_output, axis=-1)
+    pooled = tf.nn.max_pool(
+        value=features, # [batch, height, width, channels]
+        ksize=[1, 1, pool_size, 1],
+        strides=[1, 1, 1, 1],
+        padding='VALID',
+        name="pool")
+    # Get rid of last 2 empty dimensions
+    pooled = tf.squeeze(pooled, axis=[2,3], name="pool_squeeze")
+    # Pad
+    pad_len = max_seq_len - tf.shape(pooled)[1]
+    paddings = [[0,0],[0, pad_len]]
+    padded = tf.pad(pooled, paddings=paddings, mode='CONSTANT', name="padding")
+
+    # Logits
+    with tf.variable_scope("sequence_class_logits"):
+      w = tf.get_variable("weights", [max_seq_len, num_classes],
+          dtype=self.float_type, initializer=glorot())
+      b = tf.get_variable("biases", [num_classes],
+          dtype=self.float_type, initializer=tf.constant_initializer(0.0))
+      class_logits = tf.matmul(padded, w) + b
+    return class_logits
 
   def sequence_loss(self, logits, targets, weight_mask):
     """ Loss on sequence, given logits and one-hot targets
