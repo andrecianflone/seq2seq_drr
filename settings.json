@@ -2,7 +2,7 @@
   "hp" : {
     "batch_size"       : "32",
     "cell_units"       : "32",
-    "dec_out_units"    : "32",
+    "dec_out_units"    : "10",
     "num_layers"       : "2",
     "keep_prob"        : "0.3",
     "nb_epochs"        : "70",
