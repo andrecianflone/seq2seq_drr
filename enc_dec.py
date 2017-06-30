@@ -26,7 +26,10 @@ class BasicEncDec():
     self.final_emb_dim = emb_dim + num_classes
     self.bi_encoder_hidden = num_units * 2
     self.bidirectional = bidirectional
-    decoder_num_units = num_units *2
+    if self.bidirectional == True:
+      decoder_num_units = num_units *2 # double if bidirectional
+    else:
+      decoder_num_units = num_units
 
     ############################
     # Model inputs
