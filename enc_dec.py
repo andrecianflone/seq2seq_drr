@@ -2,6 +2,7 @@ import tensorflow as tf
 
 from tensorflow.contrib.rnn import GRUCell, BasicLSTMCell, DropoutWrapper
 from tensorflow.contrib.layers import xavier_initializer as glorot
+from utils import dense
 
 class BasicEncDec():
   """ LSTM enc/dec as baseline, no attention """
@@ -395,16 +396,17 @@ class BasicEncDec():
     # Pad
     pad_len = max_seq_len - tf.shape(pooled)[1]
     paddings = [[0,0],[0, pad_len]]
-    padded = tf.pad(pooled, paddings=paddings, mode='CONSTANT', name="padding")
+    x = tf.pad(pooled, paddings=paddings, mode='CONSTANT', name="padding")
+
+
+    # FC
+    out_dim = 30
+    x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope="fc_log")
+    x = tf.nn.dropout(x, self.keep_prob)
 
     # Logits
-    with tf.variable_scope("sequence_class_logits"):
-      w = tf.get_variable("weights", [max_seq_len, num_classes],
-          dtype=self.float_type, initializer=glorot())
-      b = tf.get_variable("biases", [num_classes],
-          dtype=self.float_type, initializer=tf.constant_initializer(0.0))
-      class_logits = tf.matmul(padded, w) + b
-    return class_logits
+    logits = dense(x, out_dim, num_classes, act=None, scope="class_log")
+    return logits
 
   def sequence_loss(self, logits, targets, weight_mask):
     """ Loss on sequence, given logits and one-hot targets

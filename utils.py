@@ -138,3 +138,17 @@ class TrainEmbeddings():
 
   def train():
     pass
+
+def dense(x, in_dim, out_dim, scope, act=None):
+  """ Fully connected layer builder"""
+  with tf.variable_scope(scope):
+    weights = tf.get_variable("weights", shape=[in_dim, out_dim],
+              dtype=data_type, initializer=glorot())
+    biases = tf.get_variable("biases", out_dim,
+              dtype=data_type, initializer=tf.constant_initializer(0.0))
+    # Pre activation
+    h = tf.matmul(x,weights) + biases
+    # Post activation
+    if act:
+      h = act(h)
+    return h

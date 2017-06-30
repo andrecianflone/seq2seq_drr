@@ -212,8 +212,8 @@ hyperparams = {
 # Params configured for tuning
 search_space = {
   'batch_size'    : hp.choice('batch_size', range(32, 128)),
-  'cell_units'    : hp.choice('cell_units', range(4, 200)), # hidden layer size
-  'dec_out_units' : hp.choice('dec_out_units', range(4, 300)), #output from dec
+  'cell_units'    : hp.choice('cell_units', range(4, 150)), # hidden layer size
+  'dec_out_units' : hp.choice('dec_out_units', range(4, 100)), #output from dec
   'num_layers'    : hp.choice('num_layers', range(1, 10)),  # not used
   'keep_prob'     : hp.uniform('keep_prob', 0.1, 1)  # dropout keep probability
 }

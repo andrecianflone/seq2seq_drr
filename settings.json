@@ -13,7 +13,7 @@
   },
   "use_dataset" : "conll",
   "max_vocab" : "None",
-  "random_init_unknown" : "True",
+  "random_init_unknown" : "False",
   "unknown_tag" : "<unk>",
   "pad_tag" : "<pad>",
   "bos_tag" : "<bos>",
