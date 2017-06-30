@@ -24,6 +24,7 @@ def graph(results, param):
   pass
 
 def load(filepath):
+  """ Returns list of dictionaries from file """
   results = []
   with open(filepath, encoding='utf8') as pdfile:
     for line in pdfile:
@@ -34,9 +35,13 @@ def load(filepath):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="analyze results")
   parser.add_argument('filepath', help='file path of results')
-  parser.add_argument('--metric', help='metric to check for best result')
+  parser.add_argument('--metric', help='metric to check for best result',
+      default='val_f1')
   args = parser.parse_args()
   results = load(args.filepath)
+  print('-' * 80)
+  print('Printing the best results based on metric: ', args.metric)
+  print('-' * 80)
   pprint(best(results, args.metric))
 
 
