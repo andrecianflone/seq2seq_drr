@@ -257,6 +257,7 @@ def train(params):
             embedding=embedding,
             emb_dim=embedding.shape[1],
             cell_type=params['cell_type'],
+            bidirectional=params['bidirectional'],
             emb_trainable=params['emb_trainable'])
   # Start training
     tf.global_variables_initializer().run()

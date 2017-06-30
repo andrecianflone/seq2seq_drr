@@ -8,10 +8,10 @@
     "nb_epochs"        : "70",
     "early_stop_epoch" : "10",
     "cell_type"        : "LSTM",
-    "bidirectional"    : "True",
+    "bidirectional"    : "False",
     "attention"        : "True"
   },
-  "use_dataset" : "one_v_all",
+  "use_dataset" : "conll",
   "max_vocab" : "None",
   "random_init_unknown" : "True",
   "unknown_tag" : "<unk>",
