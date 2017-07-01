@@ -174,10 +174,18 @@ class Preprocess():
     for k, v in dataset['datasets'].items():
       self.data_collect[k] = Data(v["short_name"], v["path"])
 
+    # If max vocab
+    if max_vocab is not None:
+      train_path = self.data_collect['training_set'].path_source
+      train_vocab = self.most_common_words(train_path, max_vocab, self.relation)
+    else:
+      train_vocab = None
+
     # Tokenize and pad
     for data in self.data_collect.values():
       data.x, data.classes, data.seq_len, data.decoder_target, data.orig_disc=\
-            self.load_from_file(data.path_source, self.max_arg_len, label_key, self.relation)
+            self.load_from_file(data.path_source, self.max_arg_len, label_key,
+              self.relation, train_vocab)
 
       # Array with elements arg1 length, arg2 length
       data.seq_len = np.array(data.seq_len, dtype=dtype)
@@ -333,8 +341,11 @@ class Preprocess():
         x_new.append(sample)
     return x_new
 
-  def load_from_file(self, path, max_arg_len, label_name, relation=None):
+  def load_from_file(self, path, max_arg_len, label_name, relation=None,
+                    max_vocab=None):
     """ Parse the input
+    Args:
+      max_vocab: if given, only these tokens considered
     Returns:
       x : list of tokenized discourse text
       y : list of labels
@@ -353,8 +364,15 @@ class Preprocess():
           if j['Relation'] != relation: continue
 
         discourse_list.append(j)
-        arg1 = clean_str(j['Arg1']['RawText'])[:self.max_arg_len]
+        arg1 = clean_str(j['Arg1']['RawText'])
         arg2 = clean_str(j['Arg2']['RawText'])
+
+        # Consider only max_vocab tokens
+        if max_vocab is not None:
+          arg1 = [x for x in arg1 if x in max_vocab]
+          arg2 = [x for x in arg2 if x in max_vocab]
+
+        arg1 = arg1[:self.max_arg_len]
         if self.bos_tag:
           arg2.insert(0, self.bos_tag)
         arg2 = arg2[:self.max_arg_len]
@@ -390,6 +408,22 @@ class Preprocess():
     if self.eos_tag:
       seq_list.append(self.eos_tag)
     return seq_list
+
+  def most_common_words(self, path, max_vocab, relation=None):
+    words = []
+    with codecs.open(path, encoding='utf8') as pdfile:
+      for line in pdfile:
+        j = json.loads(line)
+        # Maybe exclude this relation
+        if relation is not None:
+          if j['Relation'] != relation: continue
+        arg1 = clean_str(j['Arg1']['RawText'])
+        arg2 = clean_str(j['Arg2']['RawText'])
+        words.extend(arg1)
+        words.extend(arg2)
+    count = Counter(words) # word count
+    vocab = [x[0] for x in count.most_common(max_vocab)]
+    return vocab
 
   def create_vocab(self, data_collect, max_vocab):
     """ Create a dictionary of words to int, and the reverse

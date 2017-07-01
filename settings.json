@@ -1,21 +1,21 @@
 {
   "hp" : {
     "batch_size"          : "32",
-    "cell_units"          : "32",
+    "cell_units"          : "16",
     "dec_out_units"       : "32",
     "num_layers"          : "2",
     "keep_prob"           : "0.5",
     "nb_epochs"           : "70",
     "early_stop_epoch"    : "10",
     "cell_type"           : "LSTM",
-    "bidirectional"       : "False",
+    "bidirectional"       : "True",
     "attention"           : "True",
     "class_over_sequence" : "True",
     "hidden_size"         : "120",
-    "fc_num_layers"       : "4"
+    "fc_num_layers"       : "2"
   },
   "use_dataset" : "conll",
-  "max_vocab" : "None",
+  "max_vocab" : "10000",
   "random_init_unknown" : "False",
   "unknown_tag" : "<unk>",
   "pad_tag" : "<pad>",
