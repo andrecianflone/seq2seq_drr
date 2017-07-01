@@ -9,7 +9,7 @@ class EncDec():
   """ LSTM enc/dec as baseline, no attention """
   def __init__(self,num_units, dec_out_units, max_seq_len, num_classes,
       embedding, emb_dim, cell_type, bidirectional=True, emb_trainable=False,
-      class_over_sequence=False, hidden_size=120):
+      class_over_sequence=False, hidden_size=120, fc_num_layers=1):
     """
     Args:
       num_units : dimension of recurrent cells
@@ -30,6 +30,7 @@ class EncDec():
     self.bi_encoder_hidden = num_units * 2
     self.bidirectional = bidirectional
     self.hidden_size = hidden_size
+    self.fc_num_layers = fc_num_layers # num layers for fully connected class
     if self.bidirectional == True:
       decoder_num_units = num_units *2 # double if bidirectional
     else:
@@ -403,15 +404,12 @@ class EncDec():
     paddings = [[0,0],[0, pad_len]]
     x = tf.pad(pooled, paddings=paddings, mode='CONSTANT', name="padding")
 
-    # FC
+    # FC layers
     out_dim = self.hidden_size
-    x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope="fc_1")
-    x = tf.nn.dropout(x, self.keep_prob)
-
-    # FC
-    out_dim = self.hidden_size
-    x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope="fc_2")
-    x = tf.nn.dropout(x, self.keep_prob)
+    for i in range(0,self.fc_num_layers):
+      layer_name = "fc_{}".format(i+1)
+      x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope=layer_name)
+      x = tf.nn.dropout(x, self.keep_prob)
 
     # Logits
     logits = dense(x, out_dim, num_classes, act=None, scope="class_log")

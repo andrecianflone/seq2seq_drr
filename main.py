@@ -209,7 +209,8 @@ hyperparams = {
   'bidirectional'    : settings['hp']['bidirectional'],
   'attention'        : settings['hp']['attention'],
   'class_over_sequence' : settings['hp']['class_over_sequence'],
-  'hidden_size'      : settings['hp']['hidden_size']
+  'hidden_size'      : settings['hp']['hidden_size'],
+  'fc_num_layers'    : settings['hp']['fc_num_layers']
 }
 # Params configured for tuning
 search_space = {
@@ -217,7 +218,9 @@ search_space = {
   'cell_units'    : hp.choice('cell_units', range(4, 150)), # hidden layer size
   'dec_out_units' : hp.choice('dec_out_units', range(4, 100)), #output from dec
   'num_layers'    : hp.choice('num_layers', range(1, 10)),  # not used
-  'keep_prob'     : hp.uniform('keep_prob', 0.1, 1)  # dropout keep probability
+  'keep_prob'     : hp.uniform('keep_prob', 0.1, 1),  #dropout keep probability
+  'hidden_size'   : hp.choice('hidden_size', range(60, 300)), # fc layer size
+  'fc_num_layers' : hp.choice('fc_num_layers', range(1, 10)), #num of fc layers
 }
 ###############################################################################
 # Train
@@ -261,7 +264,10 @@ def train(params):
             cell_type=params['cell_type'],
             bidirectional=params['bidirectional'],
             emb_trainable=params['emb_trainable'],
-            class_over_sequence=params['class_over_sequence'])
+            class_over_sequence=params['class_over_sequence'],
+            hidden_size=params['hidden_size'],
+            fc_num_layers=params['fc_num_layers']
+            )
 
     # Start training
     tf.global_variables_initializer().run()

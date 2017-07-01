@@ -11,7 +11,8 @@
     "bidirectional"       : "False",
     "attention"           : "True",
     "class_over_sequence" : "True",
-    "hidden_size"         : "120"
+    "hidden_size"         : "120",
+    "fc_num_layers"       : "4"
   },
   "use_dataset" : "conll",
   "max_vocab" : "None",
