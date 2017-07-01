@@ -1,6 +1,9 @@
 from datetime import datetime
+import pprint
 
 import numpy as np
+import tensorflow as tf
+from tensorflow.contrib.layers import xavier_initializer as glorot
 from sklearn.utils import shuffle as group_shuffle
 
 class Progress():
@@ -78,6 +81,9 @@ class Metrics():
     self.epoch_current = 0
     self.epoch_best = 0
 
+  def __str__(self):
+    return pprint.pformat(self.metric_dict)
+
   def update(self, name, value):
     """ Only save metric if best for monitored """
     if name == self.monitor:
@@ -121,9 +127,7 @@ class Callback():
       self.stop_count = 0
 
     if self.stop_count >= self.early_stop_epoch:
-      msg = "\nEarly stopping. Best f1 {} at epoch {}".format(\
-            self.metrics.metric_best, self.metrics.epoch_best)
-      self.prog.print_cust(msg)
+      self.prog.print_cust("\nEarly stopping")
       return True
     else:
       return False
@@ -143,9 +147,9 @@ def dense(x, in_dim, out_dim, scope, act=None):
   """ Fully connected layer builder"""
   with tf.variable_scope(scope):
     weights = tf.get_variable("weights", shape=[in_dim, out_dim],
-              dtype=data_type, initializer=glorot())
+              dtype=tf.float32, initializer=glorot())
     biases = tf.get_variable("biases", out_dim,
-              dtype=data_type, initializer=tf.constant_initializer(0.0))
+              dtype=tf.float32, initializer=tf.constant_initializer(0.0))
     # Pre activation
     h = tf.matmul(x,weights) + biases
     # Post activation

@@ -292,6 +292,7 @@ def train(params):
 
       if cb.early_stop() == True: break
       prog.epoch_end()
+    print(met)
     prog.epoch_end()
 
   # Results of this trial
