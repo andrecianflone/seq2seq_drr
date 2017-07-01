@@ -544,6 +544,15 @@ def settings(path):
   # Fix attention
   settings['hp']['attention'] = parse_bool(settings['hp']['attention'])
 
+  # Fix class over sequence
+  settings['hp']['class_over_sequence'] = parse_bool(settings['hp']['class_over_sequence'])
+
+  # Fix hidden_size
+  settings['hp']['hidden_size'] = parse_int(settings['hp']['hidden_size'])
+
+  # Fix hidden_size
+  settings['hp']['fc_num_layers'] = parse_int(settings['hp']['fc_num_layers'])
+
   return settings
 
 def parse_bool(val):

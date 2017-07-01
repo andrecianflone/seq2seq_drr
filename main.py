@@ -91,14 +91,24 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
     # yield the results when training
     yield result
 
-def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches, prog):
+def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
+                    prog, writer=None):
   """ Train 'model' using 'data' for a single epoch """
   fetch = [model.class_optimizer, model.class_cost]
+
+  if writer is not None:
+    fetch.append(model.merged_summary_ops)
+
   batch_results = call_model(sess, model, data, fetch, batch_size, num_batches,
                              keep_prob, shuffle=True)
+  i = 0
   for result in batch_results:
     loss = result[1]
+    summary = result[-1]
     prog.print_train(loss)
+    if writer is not None:
+      i += 1
+      writer.add_summary(summary, i)
     # break
 
 def classification_f1(sess, data, model, batch_size, num_batches_test):
@@ -269,6 +279,7 @@ def train(params):
             fc_num_layers=params['fc_num_layers']
             )
 
+    writer = tf.summary.FileWriter('logs', sess.graph)
     # Start training
     tf.global_variables_initializer().run()
     for epoch in range(params['nb_epochs']):
@@ -276,7 +287,7 @@ def train(params):
 
       # Training set
       train_one_epoch(sess, train_set, model, params['keep_prob'],
-                          batch_size, train_set.num_batches(batch_size), prog)
+                  batch_size, train_set.num_batches(batch_size), prog, writer)
 
       # Validation Set
       prog.print_cust('|| {} '.format(val_set.short_name))

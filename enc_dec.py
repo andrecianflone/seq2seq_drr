@@ -109,21 +109,26 @@ class EncDec():
     self.class_loss = self.classification_loss(self.classes, self.class_logits)
 
     self.class_cost = tf.reduce_mean(self.class_loss) # average across batch
+    tf.summary.scalar("class_cost", self.class_cost)
+
     self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
 
     self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
 
     # GENERATION ##############
     # Outputs over vocab, for sequence
-    self.seq_logits = self.sequence_output_logits(
-                  self.decoded_outputs.rnn_output, dec_out_units, vocab_size)
-    self.seq_softmax_logits = tf.nn.softmax(self.seq_logits)
+    # self.seq_logits = self.sequence_output_logits(
+                  # self.decoded_outputs.rnn_output, dec_out_units, vocab_size)
+    # self.seq_softmax_logits = tf.nn.softmax(self.seq_logits)
 
-    # Generator loss per sample
-    self.gen_loss = self.sequence_loss(\
-                        self.seq_logits, self.dec_targets, self.dec_weight_mask)
-    self.gen_cost = tf.reduce_mean(self.gen_loss) # average across batch
-    self.gen_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.gen_cost)
+    # # Generator loss per sample
+    # self.gen_loss = self.sequence_loss(\
+                        # self.seq_logits, self.dec_targets, self.dec_weight_mask)
+    # self.gen_cost = tf.reduce_mean(self.gen_loss) # average across batch
+    # self.gen_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.gen_cost)
+
+    # Merged summary ops
+    self.merged_summary_ops = tf.summary.merge_all()
 
   def embedding_setup(self, embedding, emb_trainable):
     """ If trainable, returns variable, otherwise the original embedding """
@@ -406,9 +411,14 @@ class EncDec():
 
     # FC layers
     out_dim = self.hidden_size
-    for i in range(0,self.fc_num_layers):
+
+    layer_name = "fc_1"
+    x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope=layer_name)
+    x = tf.nn.dropout(x, self.keep_prob)
+    in_dim=out_dim
+    for i in range(1,self.fc_num_layers):
       layer_name = "fc_{}".format(i+1)
-      x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope=layer_name)
+      x = dense(x, in_dim, out_dim, act=tf.nn.relu, scope=layer_name)
       x = tf.nn.dropout(x, self.keep_prob)
 
     # Logits
