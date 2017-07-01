@@ -16,7 +16,7 @@ from embeddings import Embeddings
 import tensorflow as tf
 from sklearn.metrics import f1_score, accuracy_score
 import numpy as np
-from enc_dec import BasicEncDec
+from enc_dec import EncDec
 from utils import Progress, Metrics, Callback
 import sys
 from six.moves import cPickle as pickle
@@ -207,7 +207,9 @@ hyperparams = {
   'early_stop_epoch' : settings['hp']['early_stop_epoch'], # stop after n epochs
   'cell_type'        : settings['hp']['cell_type'],
   'bidirectional'    : settings['hp']['bidirectional'],
-  'attention'        : settings['hp']['attention']
+  'attention'        : settings['hp']['attention'],
+  'class_over_sequence' : settings['hp']['class_over_sequence'],
+  'hidden_size'      : settings['hp']['hidden_size']
 }
 # Params configured for tuning
 search_space = {
@@ -249,7 +251,7 @@ def train(params):
 
   # Declare model with hyperparams
   with tf.Graph().as_default(), tf.Session() as sess:
-    model = BasicEncDec(\
+    model = EncDec(\
             num_units=params['cell_units'],
             dec_out_units=params['dec_out_units'],
             max_seq_len=max_arg_len,
@@ -258,8 +260,10 @@ def train(params):
             emb_dim=embedding.shape[1],
             cell_type=params['cell_type'],
             bidirectional=params['bidirectional'],
-            emb_trainable=params['emb_trainable'])
-  # Start training
+            emb_trainable=params['emb_trainable'],
+            class_over_sequence=params['class_over_sequence'])
+
+    # Start training
     tf.global_variables_initializer().run()
     for epoch in range(params['nb_epochs']):
       prog.epoch_start()

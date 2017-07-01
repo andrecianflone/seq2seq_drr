@@ -1,13 +1,15 @@
 import tensorflow as tf
 
 from tensorflow.contrib.rnn import GRUCell, BasicLSTMCell, DropoutWrapper
+from tensorflow.contrib.rnn import LayerNormBasicLSTMCell as LNBLSTMCell
 from tensorflow.contrib.layers import xavier_initializer as glorot
 from utils import dense
 
-class BasicEncDec():
+class EncDec():
   """ LSTM enc/dec as baseline, no attention """
   def __init__(self,num_units, dec_out_units, max_seq_len, num_classes,
-      embedding, emb_dim, cell_type, bidirectional=True, emb_trainable=False):
+      embedding, emb_dim, cell_type, bidirectional=True, emb_trainable=False,
+      class_over_sequence=False, hidden_size=120):
     """
     Args:
       num_units : dimension of recurrent cells
@@ -27,6 +29,7 @@ class BasicEncDec():
     self.final_emb_dim = emb_dim + num_classes
     self.bi_encoder_hidden = num_units * 2
     self.bidirectional = bidirectional
+    self.hidden_size = hidden_size
     if self.bidirectional == True:
       decoder_num_units = num_units *2 # double if bidirectional
     else:
@@ -89,15 +92,17 @@ class BasicEncDec():
                             attn_units=dec_out_units)
 
     # CLASSIFICATION ##########
-    self.class_logits = self.sequence_class_logits(\
-        decoded_outputs=self.decoded_outputs,
-        pool_size=dec_out_units,
-        max_seq_len=max_seq_len,
-        num_classes=num_classes)
-
-    # Output for classification, use last decoder hidden state
-    # self.class_logits = self.output_logits(
-        # self.decoded_final_state.attention, dec_out_units, num_classes, "class_softmax")
+    if class_over_sequence == True:
+      # Classification over entire sequence output
+      self.class_logits = self.sequence_class_logits(\
+          decoded_outputs=self.decoded_outputs,
+          pool_size=dec_out_units,
+          max_seq_len=max_seq_len,
+          num_classes=num_classes)
+    else:
+      # Classification input uses only sequence final state
+      self.class_logits = self.output_logits(self.decoded_final_state.attention,
+                          dec_out_units, num_classes, "class_softmax")
 
     # Classification loss
     self.class_loss = self.classification_loss(self.classes, self.class_logits)
@@ -398,10 +403,14 @@ class BasicEncDec():
     paddings = [[0,0],[0, pad_len]]
     x = tf.pad(pooled, paddings=paddings, mode='CONSTANT', name="padding")
 
+    # FC
+    out_dim = self.hidden_size
+    x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope="fc_1")
+    x = tf.nn.dropout(x, self.keep_prob)
 
     # FC
-    out_dim = 30
-    x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope="fc_log")
+    out_dim = self.hidden_size
+    x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope="fc_2")
     x = tf.nn.dropout(x, self.keep_prob)
 
     # Logits
