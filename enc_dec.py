@@ -180,6 +180,11 @@ class EncDec():
       cell_enc_bw = GRUCell(num_units)
       cell_enc = GRUCell(num_units)
       cell_dec = GRUCell(decoder_num_units)
+    elif cell_type=="LNBLSTM":
+      cell_enc_fw = LNBLSTMCell(num_units)
+      cell_enc_bw = LNBLSTMCell(num_units)
+      cell_enc = LNBLSTMCell(num_units)
+      cell_dec = LNBLSTMCell(decoder_num_units)
 
     # Dropout wrapper
     cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
