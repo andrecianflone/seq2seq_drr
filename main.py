@@ -220,7 +220,8 @@ hyperparams = {
   'attention'        : settings['hp']['attention'],
   'class_over_sequence' : settings['hp']['class_over_sequence'],
   'hidden_size'      : settings['hp']['hidden_size'],
-  'fc_num_layers'    : settings['hp']['fc_num_layers']
+  'fc_num_layers'    : settings['hp']['fc_num_layers'],
+  'attention'        : settings['hp']['attention']
 }
 # Params configured for tuning
 search_space = {
@@ -272,6 +273,7 @@ def train(params):
             embedding=embedding,
             emb_dim=embedding.shape[1],
             cell_type=params['cell_type'],
+            attention=params['attention'],
             bidirectional=params['bidirectional'],
             emb_trainable=params['emb_trainable'],
             class_over_sequence=params['class_over_sequence'],

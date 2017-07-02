@@ -10,8 +10,8 @@
     "cell_type"           : "LSTM",
     "bidirectional"       : "True",
     "attention"           : "True",
-    "class_over_sequence" : "True",
-    "hidden_size"         : "120",
+    "class_over_sequence" : "False",
+    "hidden_size"         : "60",
     "fc_num_layers"       : "2"
   },
   "use_dataset" : "conll",

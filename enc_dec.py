@@ -6,9 +6,9 @@ from tensorflow.contrib.layers import xavier_initializer as glorot
 from utils import dense
 
 class EncDec():
-  """ LSTM enc/dec as baseline, no attention """
+  """ Encoder Decoder """
   def __init__(self,num_units, dec_out_units, max_seq_len, num_classes,
-      embedding, emb_dim, cell_type, bidirectional=True, emb_trainable=False,
+      embedding, emb_dim, cell_type, attention, bidirectional=True, emb_trainable=False,
       class_over_sequence=False, hidden_size=120, fc_num_layers=1):
     """
     Args:
@@ -44,24 +44,27 @@ class EncDec():
     self.embedding_tensor = self.embedding_setup(embedding, emb_trainable)
 
     # Encoder inputs
-    self.enc_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
-    self.enc_embedded = self.embedded(self.enc_input, self.embedding_tensor)
-    self.enc_input_len = tf.placeholder(self.int_type, shape=[None,])
+    with tf.name_scope("encoder_input"):
+      self.enc_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
+      self.enc_embedded = self.embedded(self.enc_input, self.embedding_tensor)
+      self.enc_input_len = tf.placeholder(self.int_type, shape=[None,])
 
     # Class label
-    self.classes = tf.placeholder(self.int_type, shape=[None, num_classes])
+    with tf.name_scope("class_labels"):
+      self.classes = tf.placeholder(self.int_type, shape=[None, num_classes])
 
     # Condition on Y ==> Embeddings + labels
     # self.enc_embedded = self.emb_add_class(self.enc_embedded, self.classes)
 
     # Decoder inputs and targets
-    self.dec_targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
-    self.dec_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
-    self.dec_embedded = self.embedded(self.dec_input, self.embedding_tensor)
-    # self.dec_embedded = self.emb_add_class(self.dec_embedded, self.classes)
-    self.dec_input_len = tf.placeholder(self.int_type, shape=[None,])
-    # weight mask shape [batch_size x sequence_length]
-    self.dec_weight_mask = tf.placeholder(self.float_type, shape=[None, max_seq_len])
+    with tf.name_scope("decoder_input"):
+      self.dec_targets = tf.placeholder(self.int_type, shape=[None, max_seq_len])
+      self.dec_input = tf.placeholder(self.int_type, shape=[None, max_seq_len])
+      self.dec_embedded = self.embedded(self.dec_input, self.embedding_tensor)
+      # self.dec_embedded = self.emb_add_class(self.dec_embedded, self.classes)
+      self.dec_input_len = tf.placeholder(self.int_type, shape=[None,])
+      # weight mask shape [batch_size x sequence_length]
+      self.dec_weight_mask = tf.placeholder(self.float_type, shape=[None, max_seq_len])
 
     self.batch_size = tf.shape(self.enc_input)[0]
 
@@ -73,15 +76,17 @@ class EncDec():
         self.cell_setup(num_units, decoder_num_units, cell_type=cell_type)
 
     # Get encoder data
-    if self.bidirectional == True:
-      self.encoded_outputs, self.encoded_state = self.encoder_bi(cell_enc_fw, \
-                            cell_enc_bw, self.enc_embedded, self.enc_input_len)
-    else:
-      self.encoded_outputs, self.encoded_state = self.encoder_one_way(\
-                            cell_enc, self.enc_embedded, self.enc_input_len)
+    with tf.name_scope("encoder"):
+      if self.bidirectional == True:
+        self.encoded_outputs, self.encoded_state = self.encoder_bi(cell_enc_fw, \
+                              cell_enc_bw, self.enc_embedded, self.enc_input_len)
+      else:
+        self.encoded_outputs, self.encoded_state = self.encoder_one_way(\
+                              cell_enc, self.enc_embedded, self.enc_input_len)
 
     # Get decoder data
-    self.decoded_outputs, self.decoded_final_state, self.decoded_final_seq_len=\
+    with tf.name_scope("decoder"):
+      self.decoded_outputs, self.decoded_final_state, self.decoded_final_seq_len=\
                           self.decoder_train_attn(
                             cell=cell_dec,
                             decoder_inputs=self.dec_embedded,
@@ -93,27 +98,29 @@ class EncDec():
                             attn_units=dec_out_units)
 
     # CLASSIFICATION ##########
-    if class_over_sequence == True:
-      # Classification over entire sequence output
-      self.class_logits = self.sequence_class_logits(\
-          decoded_outputs=self.decoded_outputs,
-          pool_size=dec_out_units,
-          max_seq_len=max_seq_len,
-          num_classes=num_classes)
-    else:
-      # Classification input uses only sequence final state
-      self.class_logits = self.output_logits(self.decoded_final_state.attention,
-                          dec_out_units, num_classes, "class_softmax")
+    with tf.name_scope("classification"):
+      if class_over_sequence == True:
+        # Classification over entire sequence output
+        self.class_logits = self.sequence_class_logits(\
+            decoded_outputs=self.decoded_outputs,
+            pool_size=dec_out_units,
+            max_seq_len=max_seq_len,
+            num_classes=num_classes)
+      else:
+        # Classification input uses only sequence final state
+        self.class_logits = self.output_logits(self.decoded_final_state.attention,
+                            dec_out_units, num_classes, "class_softmax")
 
-    # Classification loss
-    self.class_loss = self.classification_loss(self.classes, self.class_logits)
+    with tf.name_scope("loss"):
+      # Classification loss
+      self.class_loss = self.classification_loss(self.classes, self.class_logits)
 
-    self.class_cost = tf.reduce_mean(self.class_loss) # average across batch
-    tf.summary.scalar("class_cost", self.class_cost)
+      self.class_cost = tf.reduce_mean(self.class_loss) # average across batch
+      tf.summary.scalar("class_cost", self.class_cost)
 
-    self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
+      self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
 
-    self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
+      self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
 
     # GENERATION ##############
     # Outputs over vocab, for sequence
@@ -175,14 +182,14 @@ class EncDec():
     cell_dec = DropoutWrapper(cell_dec, output_keep_prob=self.keep_prob)
     return cell_enc_fw, cell_enc_bw, cell_enc, cell_dec
 
-  def encoder_one_way(self, cell, x, seq_len, init_state=None, scope="encoder"):
+  def encoder_one_way(self, cell, x, seq_len, init_state=None):
     """ Dynamic encoder for one direction
     Returns:
       outputs: all sequence hidden states as Tensor of shape [batch,time,units]
       state: last hidden state
     """
     # Output is the outputs at all time steps, state is the last state
-    with tf.variable_scope(scope):
+    with tf.variable_scope("dynamic_rnn"):
       outputs, state = tf.nn.dynamic_rnn(\
                   cell, x, sequence_length=seq_len, initial_state=init_state,
                   dtype=self.float_type)
@@ -190,7 +197,7 @@ class EncDec():
     return outputs, state
 
   def encoder_bi(self, cell_fw, cell_bw, x, seq_len, init_state_fw=None,
-                  init_state_bw=None, scope="encoder"):
+                  init_state_bw=None):
     """ Dynamic encoder for two directions
     Returns:
       outputs: a tuple(output_fw, output_bw), all sequence hidden states, each
@@ -199,7 +206,7 @@ class EncDec():
              and the backward final states of bidirectional rnlast hidden state
     """
     # Output is the outputs at all time steps, state is the last state
-    with tf.variable_scope(scope):
+    with tf.variable_scope("bidirectional_dynamic_rnn"):
       outputs, state = tf.nn.bidirectional_dynamic_rnn(\
                   cell_fw=cell_fw,
                   cell_bw=cell_bw,
@@ -395,31 +402,33 @@ class EncDec():
 
   def sequence_class_logits(self, decoded_outputs, pool_size, max_seq_len, num_classes):
     """ Logits for the sequence """
-    features = tf.expand_dims(self.decoded_outputs.rnn_output, axis=-1)
-    pooled = tf.nn.max_pool(
-        value=features, # [batch, height, width, channels]
-        ksize=[1, 1, pool_size, 1],
-        strides=[1, 1, 1, 1],
-        padding='VALID',
-        name="pool")
-    # Get rid of last 2 empty dimensions
-    pooled = tf.squeeze(pooled, axis=[2,3], name="pool_squeeze")
-    # Pad
-    pad_len = max_seq_len - tf.shape(pooled)[1]
-    paddings = [[0,0],[0, pad_len]]
-    x = tf.pad(pooled, paddings=paddings, mode='CONSTANT', name="padding")
+    with tf.variable_scope("pooling"):
+      features = tf.expand_dims(self.decoded_outputs.rnn_output, axis=-1)
+      pooled = tf.nn.max_pool(
+          value=features, # [batch, height, width, channels]
+          ksize=[1, 1, pool_size, 1],
+          strides=[1, 1, 1, 1],
+          padding='VALID',
+          name="pool")
+      # Get rid of last 2 empty dimensions
+      pooled = tf.squeeze(pooled, axis=[2,3], name="pool_squeeze")
+      # Pad
+      pad_len = max_seq_len - tf.shape(pooled)[1]
+      paddings = [[0,0],[0, pad_len]]
+      x = tf.pad(pooled, paddings=paddings, mode='CONSTANT', name="padding")
 
-    # FC layers
-    out_dim = self.hidden_size
+    with tf.variable_scope("dense_layers"):
+      # FC layers
+      out_dim = self.hidden_size
 
-    layer_name = "fc_1"
-    x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope=layer_name)
-    x = tf.nn.dropout(x, self.keep_prob)
-    in_dim=out_dim
-    for i in range(1,self.fc_num_layers):
-      layer_name = "fc_{}".format(i+1)
-      x = dense(x, in_dim, out_dim, act=tf.nn.relu, scope=layer_name)
+      layer_name = "fc_1"
+      x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope=layer_name)
       x = tf.nn.dropout(x, self.keep_prob)
+      in_dim=out_dim
+      for i in range(1,self.fc_num_layers):
+        layer_name = "fc_{}".format(i+1)
+        x = dense(x, in_dim, out_dim, act=tf.nn.relu, scope=layer_name)
+        x = tf.nn.dropout(x, self.keep_prob)
 
     # Logits
     logits = dense(x, out_dim, num_classes, act=None, scope="class_log")
