@@ -18,10 +18,10 @@ DRR with encoder/decoder type model
 | Development | 0-1, optionally can use 23-24 |
 | Test        | 21-22                         |
 
-Followed by, for example: [Zhang et al 2015], [Chen et al, 2016], [Ji and Eisensteing, 2015]
+Followed by, for example: [Zhang et al 2015], [Chen et al, 2016], [Ji and Eisenstein, 2015]
 
 
-**The CoNLL breakdown, recommended by the original [PDTB 2.0] corpus:**
+**The CoNLL breakdown, recommended by the original [PDTB] 2.0 corpus:**
 
 | Set         | WSJ sections |
 |-------------|--------------|
@@ -32,7 +32,7 @@ Followed by, for example: [Zhang et al 2015], [Chen et al, 2016], [Ji and Eisens
 Followed by [CoNLL](http://www.aclweb.org/anthology/K/K16/K16-2.pdf#page=11), [Wang and Lan, 2016](https://www.aclweb.org/anthology/K/K16/K16-2.pdf#page=43)
 
 # Types
-According to the official [PDTB summary]:
+According to the official [PDTB] summary:
 
 | PDTB Relations | No. of tokens |
 |:---------------|--------------:|
@@ -113,7 +113,7 @@ Gated Relevance Network. Summary:
 - [One Vector is Not Enough: Entity-Augmented Distributional Semantics for Discourse Relations](https://arxiv.org/pdf/1411.6699.pdf)
 
 [Chen et al, 2016]: https://www.aclweb.org/anthology/P/P16/P16-1163.pdf
-[PDTB corpus]: https://www.seas.upenn.edu/~pdtb/papers/pdtb-lrec08.pdf
+[PDTB]: https://www.seas.upenn.edu/~pdtb/papers/pdtb-lrec08.pdf
 [Zhang et al 2015]: http://www.anthology.aclweb.org/D/D15/D15-1266.pdf
 [conll]: http://www.aclweb.org/anthology/K/K16/K16-2.pdf#page=26
 [Ji and Eisensteing, 2015]: https://arxiv.org/pdf/1411.6699.pdf
