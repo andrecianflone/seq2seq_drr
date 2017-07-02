@@ -7,8 +7,11 @@ Author: Andre Cianflone
 
 For a single trial, call script without arguments
 
-For hyperparameter search, call as this example:
+Param search eg:
 python main.py --trials 50 --search_param cell_units --file_save trials/cell_units
+
+tensorboard:
+tensorboard --logdir="logs"
 -----------
 """
 from helper import Preprocess, Data, MiniData, make_batches, settings
@@ -94,21 +97,20 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
 def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
                     prog, writer=None):
   """ Train 'model' using 'data' for a single epoch """
-  fetch = [model.class_optimizer, model.class_cost]
+  fetch = [model.class_optimizer, model.class_cost, model.global_step]
 
   if writer is not None:
     fetch.append(model.merged_summary_ops)
 
   batch_results = call_model(sess, model, data, fetch, batch_size, num_batches,
                              keep_prob, shuffle=True)
-  i = 0
   for result in batch_results:
     loss = result[1]
+    global_step = result[2]
     summary = result[-1]
     prog.print_train(loss)
-    if writer is not None:
-      i += 1
-      writer.add_summary(summary, i)
+    if writer is not None and global_step % 10 == 0:
+      writer.add_summary(summary, global_step)
     # break
 
 def classification_f1(sess, data, model, batch_size, num_batches_test):
@@ -281,7 +283,12 @@ def train(params):
             fc_num_layers=params['fc_num_layers']
             )
 
-    writer = tf.summary.FileWriter('logs', sess.graph)
+    # Save info for tensorboard
+    if settings['tensorboard_write'] == True:
+      writer = tf.summary.FileWriter('logs', sess.graph)
+    else:
+      writer = None
+
     # Start training
     tf.global_variables_initializer().run()
     for epoch in range(params['nb_epochs']):

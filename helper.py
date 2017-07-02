@@ -517,6 +517,9 @@ def settings(path):
   # fix embedding trainable
   settings['emb_trainable'] = parse_bool(settings['emb_trainable'])
 
+  # fix tensorboard write
+  settings['tensorboard_write'] = parse_bool(settings['tensorboard_write'])
+
   # Fix training batch size
   settings['hp']['batch_size'] = parse_int(settings['hp']['batch_size'])
 
