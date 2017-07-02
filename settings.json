@@ -14,6 +14,7 @@
     "hidden_size"         : "60",
     "fc_num_layers"       : "2"
   },
+  "tensorboard_write" : "False",
   "use_dataset" : "conll",
   "max_vocab" : "10000",
   "random_init_unknown" : "False",

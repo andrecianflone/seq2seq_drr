@@ -36,6 +36,9 @@ class EncDec():
     else:
       decoder_num_units = num_units
 
+    # helper variable to keep track of steps
+    self.global_step = tf.Variable(0, name='global_step', trainable=False)
+
     ############################
     # Model inputs
     ############################
@@ -116,9 +119,12 @@ class EncDec():
       self.class_loss = self.classification_loss(self.classes, self.class_logits)
 
       self.class_cost = tf.reduce_mean(self.class_loss) # average across batch
+
       tf.summary.scalar("class_cost", self.class_cost)
 
-      self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(self.class_cost)
+      self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(\
+                              self.class_cost,
+                              global_step=self.global_step)
 
       self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
 
