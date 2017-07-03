@@ -308,19 +308,19 @@ class EncDec():
     """
 
     # Attention Mechanisms. Bahdanau is additive style attention
-    # attn_mech = tf.contrib.seq2seq.BahdanauAttention(
-        # num_units = mem_units, # depth of query mechanism
-        # memory = attention_states, # hidden states to attend (output of RNN)
-        # memory_sequence_length=seq_len_enc, # masks false memories
-        # normalize=False, # normalize energy term
-        # name='BahdanauAttention')
-
-    # Attention Mechanisms. Bahdanau is additive style attention
-    attn_mech = tf.contrib.seq2seq.LuongAttention(
+    attn_mech = tf.contrib.seq2seq.BahdanauAttention(
         num_units = mem_units, # depth of query mechanism
         memory = attention_states, # hidden states to attend (output of RNN)
         memory_sequence_length=seq_len_enc, # masks false memories
-        name='LuongAttention')
+        normalize=True, # normalize energy term
+        name='BahdanauAttention')
+
+    # Attention Mechanisms. Bahdanau is additive style attention
+    # attn_mech = tf.contrib.seq2seq.LuongAttention(
+        # num_units = mem_units, # depth of query mechanism
+        # memory = attention_states, # hidden states to attend (output of RNN)
+        # memory_sequence_length=seq_len_enc, # masks false memories
+        # name='LuongAttention')
 
     # Attention Wrapper: adds the attention mechanism to the cell
     attn_cell = tf.contrib.seq2seq.AttentionWrapper(

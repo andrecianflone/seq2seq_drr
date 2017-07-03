@@ -9,6 +9,7 @@ For a single trial, call script without arguments
 
 Param search eg:
 python main.py --trials 50 --search_param cell_units --file_save trials/cell_units
+python main.py --trials 50 --search_param cell_units --file_save trials/pdtb/cell_units
 
 tensorboard:
 tensorboard --logdir="logs"
