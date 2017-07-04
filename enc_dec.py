@@ -438,15 +438,12 @@ class EncDec():
     with tf.variable_scope("dense_layers"):
       # FC layers
       out_dim = self.hidden_size
-
-      layer_name = "fc_1"
-      x = dense(x, max_seq_len, out_dim, act=tf.nn.relu, scope=layer_name)
-      x = tf.nn.dropout(x, self.keep_prob)
-      in_dim=out_dim
-      for i in range(1,self.fc_num_layers):
+      in_dim=max_seq_len
+      for i in range(0,self.fc_num_layers):
         layer_name = "fc_{}".format(i+1)
         x = dense(x, in_dim, out_dim, act=tf.nn.relu, scope=layer_name)
         x = tf.nn.dropout(x, self.keep_prob)
+        in_dim=out_dim
 
     # Logits
     logits = dense(x, out_dim, num_classes, act=None, scope="class_log")
