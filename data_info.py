@@ -6,7 +6,7 @@ import codecs
 import matplotlib.pyplot as plt
 from pprint import pprint
 
-def file_info(filepath, explicit=None):
+def file_info(filepath, explicit=None, only_positive=False):
   arg_len = defaultdict(int)
   count = 0
   senses = defaultdict(int)
@@ -19,6 +19,11 @@ def file_info(filepath, explicit=None):
       # except Exception as e:
         # print('line ', count, ' invalid')
         # continue
+
+      # Possible skip for positive filter
+      if only_positive == True:
+        if j['Class'] != "positive":
+          continue
 
       # pprint(j)
       # input('...')
@@ -59,11 +64,11 @@ def plot_arg_len(arg_len):
   plt.bar(arg_len.keys(), arg_len.values(), width, color='b')
   plt.show()
 
-def print_info(filepath, explicit=None, plot=False):
+def print_info(filepath, explicit=None, plot=False, only_positive=False):
   print('='*79)
   print('Info for file: ', filepath)
   print('='*79)
-  count, sense, types, arg_len = file_info(filepath, explicit)
+  count, sense, types, arg_len = file_info(filepath, explicit, only_positive)
   print('Lines in train: ', count)
   pprint(types)
   if explicit == False:
@@ -73,9 +78,9 @@ def print_info(filepath, explicit=None, plot=False):
     plot_arg_len(arg_len)
 
 if __name__ == "__main__":
-  print_info('data/one_v_all_dev.json', False)
-  print_info('data/one_v_all_test.json', False)
-  print_info('data/one_v_all_train.json', False)
+  print_info('data/one_v_all_dev2.json', explicit=False, only_positive=True)
+  print_info('data/one_v_all_test.json', explicit=False, only_positive=True)
+  print_info('data/one_v_all_train.json', explicit=False, only_positive=True)
   # print_info('data/train.json', False)
   # print_info('data/dev.json', False)
   # print_info('data/test.json', False)
