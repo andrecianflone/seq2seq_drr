@@ -46,7 +46,7 @@
       "validation_set" : {"short_name":"val","path":"data/one_v_all_dev2.json"},
       "test_set"       : {"short_name":"test","path":"data/one_v_all_test.json"}
     },
-    "this_relation" : "Expansion",
+    "this_relation" : "Contingency",
     "label_key" : "Class",
     "mapping"   : "data/map_one_v_all.json"
   }

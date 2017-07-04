@@ -6,7 +6,7 @@ import codecs
 import matplotlib.pyplot as plt
 from pprint import pprint
 
-def file_info(filepath, explicit=None, only_positive=False):
+def file_info(filepath, explicit=None, sense_tag='Sense', only_positive=False):
   arg_len = defaultdict(int)
   count = 0
   senses = defaultdict(int)
@@ -27,10 +27,10 @@ def file_info(filepath, explicit=None, only_positive=False):
 
       # pprint(j)
       # input('...')
-      total_tokens = len(j['Arg1']['Tokenized'])
-      total_tokens += len(j['Arg2']['Tokenized'])
-      # total_tokens = len(j['Arg1']['TokenList'])
-      # total_tokens += len(j['Arg2']['TokenList'])
+      # total_tokens = len(j['Arg1']['Tokenized'])
+      # total_tokens += len(j['Arg2']['Tokenized'])
+      total_tokens = len(j['Arg1']['TokenList'])
+      total_tokens += len(j['Arg2']['TokenList'])
       if total_tokens > 120:
         total_tokens = 120
       arg_len[total_tokens] += 1
@@ -38,8 +38,10 @@ def file_info(filepath, explicit=None, only_positive=False):
       typerel = str(j['Type'])
       types[typerel] += 1
 
-      # sense = str(j['Sense'][0])
-      sense = str(j['Relation'])
+      if sense_tag=='Sense':
+        sense = str(j['Sense'][0])
+      else:
+        sense = str(j[sense_tag])
       if explicit == True:
         if typerel == 'Explicit':
           senses[sense] += 1
@@ -64,11 +66,11 @@ def plot_arg_len(arg_len):
   plt.bar(arg_len.keys(), arg_len.values(), width, color='b')
   plt.show()
 
-def print_info(filepath, explicit=None, plot=False, only_positive=False):
+def print_info(filepath, explicit=None, sense='Sense', plot=False, only_positive=False):
   print('='*79)
   print('Info for file: ', filepath)
   print('='*79)
-  count, sense, types, arg_len = file_info(filepath, explicit, only_positive)
+  count, sense, types, arg_len = file_info(filepath, explicit, sense, only_positive)
   print('Lines in train: ', count)
   pprint(types)
   if explicit == False:
@@ -78,12 +80,12 @@ def print_info(filepath, explicit=None, plot=False, only_positive=False):
     plot_arg_len(arg_len)
 
 if __name__ == "__main__":
-  print_info('data/one_v_all_dev2.json', explicit=False, only_positive=True)
-  print_info('data/one_v_all_test.json', explicit=False, only_positive=True)
-  print_info('data/one_v_all_train.json', explicit=False, only_positive=True)
-  # print_info('data/train.json', False)
-  # print_info('data/dev.json', False)
-  # print_info('data/test.json', False)
-  # print_info('data/blind.json', False)
+  # print_info('data/one_v_all_dev2.json', explicit=False, only_positive=False)
+  # print_info('data/one_v_all_test.json', explicit=False, only_positive=False)
+  # print_info('data/one_v_all_train.json', explicit=False, only_positive=False)
+  print_info('data/train.json', True, sense='Sense')
+  print_info('data/dev.json', True, sense='Sense')
+  print_info('data/test.json', True, sense='Sense')
+  print_info('data/blind.json', True, sense='Sense')
 
 
