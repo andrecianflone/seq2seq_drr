@@ -45,7 +45,7 @@ def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True)
   pdtb = _list_of_dict(pdtb)
 
   # Only these types
-  types = ['Implicit', 'EntRel', 'Explicit']
+  types = ['Implicit', 'EntRel']
   print('Getting relations for these types: ', types)
   final_set = []
 
@@ -283,17 +283,17 @@ if __name__ == "__main__":
   # scan_folder(cur_dir, output)
   # print('Done! Relations saved to: ', output)
 
-  print('Getting training set')
-  train_data = make_data_set(\
-            pdtb='data/large_relations.json',
-            mapping='data/map_pdtb_top.json',
-            sampling="down",
-            equal_negative=True)
-  output_path = 'data/large_majid_one_v_all_train.json'
-  print('Saving to ', output_path)
-  dict_to_json(train_data, output_path)
+  # print('Getting training set: Large')
+  # train_data = make_data_set(\
+            # pdtb='data/large_relations.json',
+            # mapping='data/map_pdtb_top.json',
+            # sampling="down",
+            # equal_negative=True)
+  # output_path = 'data/large_majid_one_v_all_train.json'
+  # print('Saving to ', output_path)
+  # dict_to_json(train_data, output_path)
 
-  # print('Getting training set')
+  # print('Getting training set: Train')
   # train_range = range(2, 20+1)
   # train_data = make_data_set(\
             # pdtb='data/all_pdtb.json',
@@ -303,17 +303,17 @@ if __name__ == "__main__":
             # equal_negative=True)
   # dict_to_json(train_data, 'data/one_v_all_train.json')
 
-  # print('Getting dev set')
-  # dev_range = range(0, 1+1)
-  # dev_data = make_data_set(\
-            # pdtb='data/all_pdtb.json',
-            # mapping='data/map_pdtb_top.json',
-            # rng=dev_range,
-            # sampling=None,
-            # equal_negative=False)
-  # dict_to_json(dev_data, 'data/one_v_all_dev.json')
+  print('Getting dev set: Dev')
+  dev_range = range(23, 24+1)
+  dev_data = make_data_set(\
+            pdtb='data/all_pdtb.json',
+            mapping='data/map_pdtb_top.json',
+            rng=dev_range,
+            sampling=None,
+            equal_negative=False)
+  dict_to_json(dev_data, 'data/one_v_all_dev2.json')
 
-  # print('Getting test set')
+  # print('Getting test set: Test')
   # test_range = range(21, 22+1)
   # test_data = make_data_set(\
             # pdtb='data/all_pdtb.json',
