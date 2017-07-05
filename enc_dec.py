@@ -100,6 +100,7 @@ class EncDec():
                             mem_units=self.bi_encoder_hidden,
                             attn_units=dec_out_units)
 
+    self.alignment_history = self.decoded_final_state.alignment_history.stack()
     # CLASSIFICATION ##########
     with tf.name_scope("classification"):
       if class_over_sequence == True:
@@ -315,19 +316,12 @@ class EncDec():
         normalize=True, # normalize energy term
         name='BahdanauAttention')
 
-    # Attention Mechanisms. Bahdanau is additive style attention
-    # attn_mech = tf.contrib.seq2seq.LuongAttention(
-        # num_units = mem_units, # depth of query mechanism
-        # memory = attention_states, # hidden states to attend (output of RNN)
-        # memory_sequence_length=seq_len_enc, # masks false memories
-        # name='LuongAttention')
-
     # Attention Wrapper: adds the attention mechanism to the cell
     attn_cell = tf.contrib.seq2seq.AttentionWrapper(
         cell = cell,# Instance of RNNCell
         attention_mechanism = attn_mech, # Instance of AttentionMechanism
         attention_layer_size = attn_units, # Int, depth of attention (output) tensor
-        alignment_history =False, # whether to store history in final output
+        alignment_history = True, # whether to store history in final output
         name="attention_wrapper")
 
     # TrainingHelper does no sampling, only uses inputs
@@ -357,7 +351,6 @@ class EncDec():
                                   decoder=decoder,
                                   impute_finished=True)
     return outputs, final_state, final_sequence_lengths
-    # return outputs.rnn_output, final_state.attention
 
   def decoder_inference(self, cell, x, seq_len, encoder_state,bos_id, eos_id,
       max_seq, vocab_size, scope="inference"):
