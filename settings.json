@@ -11,8 +11,8 @@
     "bidirectional"       : "True",
     "attention"           : "True",
     "class_over_sequence" : "False",
-    "hidden_size"         : "10",
-    "fc_num_layers"       : "1"
+    "hidden_size"         : "60",
+    "fc_num_layers"       : "2"
   },
   "tensorboard_write" : "False",
   "use_dataset" : "one_v_all",
