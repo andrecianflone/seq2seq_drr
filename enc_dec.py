@@ -9,7 +9,8 @@ class EncDec():
   """ Encoder Decoder """
   def __init__(self,num_units, dec_out_units, max_seq_len, num_classes,
       embedding, emb_dim, cell_type, attention, bidirectional=True, emb_trainable=False,
-      class_over_sequence=False, hidden_size=120, fc_num_layers=1):
+      class_over_sequence=False, hidden_size=120, fc_num_layers=1, opt='Adam',
+      l_rate=0.01):
     """
     Args:
       num_units : dimension of recurrent cells
@@ -31,6 +32,8 @@ class EncDec():
     self.bidirectional = bidirectional
     self.hidden_size = hidden_size
     self.fc_num_layers = fc_num_layers # num layers for fully connected class
+    self.opt = opt # Optimizer
+    self.l_rate = l_rate # learning rate
     if self.bidirectional == True:
       decoder_num_units = num_units *2 # double if bidirectional
     else:
@@ -123,9 +126,15 @@ class EncDec():
 
       tf.summary.scalar("class_cost", self.class_cost)
 
-      self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(\
-                              self.class_cost,
-                              global_step=self.global_step)
+      # Optimizer
+      if self.opt == 'Adam':
+        self.class_optimizer = tf.train.AdamOptimizer(0.001).minimize(\
+                                self.class_cost,
+                                global_step=self.global_step)
+      if self.opt == 'SGD':
+        self.class_optimizer = tf.train.GradientDescentOptimizer(self.l_rate).minimize(\
+                                self.class_cost,
+                                global_step=self.global_step)
 
       self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
 

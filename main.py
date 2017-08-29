@@ -15,7 +15,7 @@ tensorboard:
 tensorboard --logdir="logs"
 -----------
 """
-from helper import Preprocess, Data, MiniData, make_batches, settings
+from helper import Preprocess, Data, MiniData, make_batches, settings, alignment
 from embeddings import Embeddings
 import tensorflow as tf
 from sklearn.metrics import f1_score, accuracy_score
@@ -92,7 +92,6 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
            }
 
     result = sess.run(fetch,feed)
-    # yield the results when training
     yield result
 
 def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
@@ -108,19 +107,27 @@ def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
   for result in batch_results:
     loss = result[1]
     global_step = result[2]
-    summary = result[-1]
     prog.print_train(loss)
     if writer is not None and global_step % 10 == 0:
+      summary = result[-1]
       writer.add_summary(summary, global_step)
     # break
 
 def classification_f1(sess, data, model, batch_size, num_batches_test):
   """ Get the total loss for the entire batch """
   fetch = [model.batch_size, model.class_cost, model.y_pred, model.y_true]
+
+  alignment_history = True
+  alignment_ls = []
+  if alignment_history == True:
+    fetch.append(model.enc_input)
+    fetch.append(model.dec_input)
+    fetch.append(model.alignment_history)
+
   y_pred = np.zeros(data.size())
   y_true = np.zeros(data.size())
   batch_results = call_model(sess, model, data, fetch, batch_size,
-                             num_batches_test, keep_prob=1, shuffle=False)
+                                 num_batches_test, keep_prob=1, shuffle=False)
   start_id = 0
   for i, result in enumerate(batch_results):
     batch_size                           = result[0]
@@ -128,6 +135,12 @@ def classification_f1(sess, data, model, batch_size, num_batches_test):
     y_pred[start_id:start_id+batch_size] = result[2]
     y_true[start_id:start_id+batch_size] = result[3]
     start_id += batch_size
+    if alignment_history == True:
+      enc_in = result[4]
+      dec_in = result[5]
+      align  = result[6]
+      al_ls = alignment(enc_in, dec_in, align, data_class.inv_vocab)
+      alignment_ls.extend(al_ls)
 
   # Metrics
   # f1 score depending on number of classes
@@ -143,7 +156,7 @@ def classification_f1(sess, data, model, batch_size, num_batches_test):
   acc = accuracy_score(y_true, y_pred)
   # f1_conll = data_class.conll_f1_score(y_pred, data.orig_disc, data.path_source)
   f1_conll =f1_micro
-  return f1_micro, f1_conll, acc
+  return f1_micro, f1_conll, acc, alignment_ls
 
 def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
   """ Get the total loss for the entire batch """
@@ -211,8 +224,8 @@ def language_model_class_loss():
 ###############################################################################
 # Default params
 hyperparams = {
-  'batch_size'       : settings['hp']['batch_size'],       # training batch size
-  'cell_units'       : settings['hp']['cell_units'],       # hidden layer size
+'batch_size'       : settings['hp']['batch_size'],       # training batch size
+'cell_units'       : settings['hp']['cell_units'],       # hidden layer size
   'dec_out_units'    : settings['hp']['dec_out_units'],    # output from decoder
   'num_layers'       : settings['hp']['num_layers'],       # not used
   'keep_prob'        : settings['hp']['keep_prob'],        # dropout keep prob
@@ -224,7 +237,9 @@ hyperparams = {
   'class_over_sequence' : settings['hp']['class_over_sequence'],
   'hidden_size'      : settings['hp']['hidden_size'],
   'fc_num_layers'    : settings['hp']['fc_num_layers'],
-  'attention'        : settings['hp']['attention']
+  'attention'        : settings['hp']['attention'],
+  'optimizer'        : settings['hp']['optimizer'],
+  'learning_rate'    : settings['hp']['learning_rate']
 }
 # Params configured for tuning
 search_space = {
@@ -301,12 +316,15 @@ def train(params):
 
       # Validation Set
       prog.print_cust('|| {} '.format(val_set.short_name))
-      _, f1, accuracy = classification_f1(
+      _, f1, accuracy, alignment = classification_f1(
               sess, val_set, model, batch_size, val_set.num_batches(batch_size))
       met.update(val_set.short_name + '_f1', f1)
       met.update(val_set.short_name + '_acc', accuracy)
       prog.print_eval('acc', accuracy)
       prog.print_eval('f1', f1)
+
+      # Previous best f1 on test -> for alignment
+      prev_best = met.metric_dict["test_f1"]
 
       for k, dataset in dataset_dict.items():
         if k == "training_set": continue # skip training, already done
@@ -314,12 +332,19 @@ def train(params):
 
         # Other sets
         prog.print_cust('|| {} '.format(dataset.short_name))
-        _, f1, accuracy = classification_f1(
+        _, f1, accuracy, alignment = classification_f1(
             sess, dataset, model, batch_size, dataset.num_batches(batch_size))
         met.update(dataset.short_name + '_f1', f1)
         met.update(dataset.short_name + '_acc', accuracy)
         prog.print_eval('acc', accuracy)
         prog.print_eval('f1', f1)
+
+        # if test set better, save alignment
+        if k == "test_set":
+          if prev_best < met.metric_dict["test_f1"]:
+            # dump pickle
+            pickle.dump(alignment, open("tmp.p", "wb"))
+            print("dumped test alignments to tmp.p file")
 
       if cb.early_stop() == True: break
       prog.epoch_end()

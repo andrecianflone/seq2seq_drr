@@ -77,7 +77,7 @@ class Metrics():
     self.monitor = monitor
     self.metric_best = 0
     self.metric_current = 0
-    self._metric_dict = {}
+    self._metric_dict = {"test_f1": 0}
     self.epoch_current = 0
     self.epoch_best = 0
 

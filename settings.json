@@ -9,6 +9,8 @@
     "early_stop_epoch"    : "10",
     "cell_type"           : "LSTM",
     "bidirectional"       : "True",
+    "optimizer"           : "SGD",
+    "learning_rate"       : "0.1",
     "attention"           : "True",
     "class_over_sequence" : "False",
     "hidden_size"         : "60",

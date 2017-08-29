@@ -1,5 +1,6 @@
 import re
 import numpy as np
+import pickle
 import json
 from collections import Counter
 import codecs
@@ -544,6 +545,9 @@ def settings(path):
   # Fix bidirectional
   settings['hp']['bidirectional'] = parse_bool(settings['hp']['bidirectional'])
 
+  # Fix learning rate
+  settings['hp']['learning_rate'] = parse_float(settings['hp']['learning_rate'])
+
   # Fix attention
   settings['hp']['attention'] = parse_bool(settings['hp']['attention'])
 
@@ -577,3 +581,31 @@ def parse_float(val):
     return None
   else:
     return float(val)
+
+def alignment(enc_in, dec_in, alignment, inv_vocab):
+  """ process data and save alignments """
+  # Alignment is time major, make batch major
+  alignment  = np.transpose(alignment, (1,0,2))
+  # Trim blank out
+  max_steps_dec = alignment.shape[1]
+  dec_in = dec_in[:,:max_steps_dec]
+  # Convert to list of tokens
+  enc_in = enc_in.tolist()
+  for i, seq in enumerate(enc_in):
+    enc_in[i] = [inv_vocab[x] for x in seq]
+  dec_in = dec_in.tolist()
+  for i, seq in enumerate(dec_in):
+    dec_in[i] = [inv_vocab[x] for x in seq]
+
+  # Return list of dicts
+  alignment_ls = []
+  path = 'tmp.json'
+  for i, disc in enumerate(enc_in):
+    arg1 = enc_in[i]
+    arg2 = dec_in[i]
+    align = alignment[i]
+    sample = {'arg1': arg1, 'arg2': arg2, 'alignment': align}
+    alignment_ls.append(sample)
+  return alignment_ls
+
+
