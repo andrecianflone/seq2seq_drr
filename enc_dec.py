@@ -76,9 +76,9 @@ class EncDec():
     self.batch_size = tf.shape(self.enc_input)[0]
 
     ############################
-    # Model
+    # Build Model
     ############################
-    # Cell setup
+    # Setup cells
     cell_enc_fw, cell_enc_bw, cell_enc, cell_dec = \
         self.build_cell(num_units, decoder_num_units, cell_type=cell_type)
 
@@ -92,8 +92,8 @@ class EncDec():
                               cell_enc, self.enc_embedded, self.enc_input_len)
 
     # Get decoder data
+    # Must train output_layer and recycle later for inference
     output_layer = tf.contrib.keras.layers.Dense(self.vocab_size, use_bias=False)
-    # output_layer = tf.layers.core.Dense(output_layer_depth, use_bias=False)
     with tf.name_scope("decoder"):
       self.decoded_outputs, self.decoded_final_state, self.decoded_final_seq_len=\
                           self.decoder_train_attn(
