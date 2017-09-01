@@ -1,13 +1,13 @@
 {
   "hp" : {
-    "batch_size"          : "32",
+    "batch_size"          : "64",
     "cell_units"          : "32",
     "dec_out_units"       : "32",
     "num_layers"          : "2",
     "keep_prob"           : "0.3",
     "nb_epochs"           : "70",
     "early_stop_epoch"    : "10",
-    "cell_type"           : "LSTM",
+    "cell_type"           : "LSTMCell",
     "bidirectional"       : "True",
     "optimizer"           : "SGD",
     "learning_rate"       : "0.1",

@@ -1,9 +1,10 @@
 import tensorflow as tf
 
-from tensorflow.contrib.rnn import GRUCell, BasicLSTMCell, DropoutWrapper
+from tensorflow.contrib.rnn import GRUCell, LSTMCell, DropoutWrapper
 from tensorflow.contrib.rnn import LayerNormBasicLSTMCell as LNBLSTMCell
 from tensorflow.contrib.layers import xavier_initializer as glorot
 from utils import dense
+from pydoc import locate
 
 class EncDec():
   """ Encoder Decoder """
@@ -15,7 +16,7 @@ class EncDec():
     Args:
       num_units : dimension of recurrent cells
       dec_out_units : dimension of decoder output
-      max_seq_len : maximum length of a sequence
+      max_seq_le maximum length of a sequence
       num_classes : number of classes
       embedding : embedding matrix as numpy array
       emb_dim : size of an embedding
@@ -45,7 +46,7 @@ class EncDec():
     ############################
     # Model inputs
     ############################
-    vocab_size = embedding.shape[0]
+    self.vocab_size = embedding.shape[0]
     # Embedding tensor is of shape [vocab_size x embedding_size]
     self.embedding_tensor = self.embedding_setup(embedding, emb_trainable)
 
@@ -75,11 +76,11 @@ class EncDec():
     self.batch_size = tf.shape(self.enc_input)[0]
 
     ############################
-    # Model (magic is here)
+    # Model
     ############################
     # Cell setup
     cell_enc_fw, cell_enc_bw, cell_enc, cell_dec = \
-        self.cell_setup(num_units, decoder_num_units, cell_type=cell_type)
+        self.build_cell(num_units, decoder_num_units, cell_type=cell_type)
 
     # Get encoder data
     with tf.name_scope("encoder"):
@@ -91,6 +92,8 @@ class EncDec():
                               cell_enc, self.enc_embedded, self.enc_input_len)
 
     # Get decoder data
+    output_layer = tf.contrib.keras.layers.Dense(self.vocab_size, use_bias=False)
+    # output_layer = tf.layers.core.Dense(output_layer_depth, use_bias=False)
     with tf.name_scope("decoder"):
       self.decoded_outputs, self.decoded_final_state, self.decoded_final_seq_len=\
                           self.decoder_train_attn(
@@ -101,7 +104,8 @@ class EncDec():
                             encoder_state=self.encoded_state,
                             attention_states=self.encoded_outputs,
                             mem_units=self.bi_encoder_hidden,
-                            attn_units=dec_out_units)
+                            attn_units=dec_out_units,
+                            output_layer=output_layer)
 
     self.alignment_history = self.decoded_final_state.alignment_history.stack()
     # CLASSIFICATION ##########
@@ -179,22 +183,14 @@ class EncDec():
         inputs = tf.nn.embedding_lookup(embedding_tensor, word_ids)
     return inputs
 
-  def cell_setup(self, num_units, decoder_num_units, cell_type="LSTM"):
-    if cell_type=="LSTM":
-      cell_enc_fw = BasicLSTMCell(num_units)
-      cell_enc_bw = BasicLSTMCell(num_units)
-      cell_enc = BasicLSTMCell(num_units)
-      cell_dec = BasicLSTMCell(decoder_num_units)
-    elif cell_type=="GRU":
-      cell_enc_fw = GRUCell(num_units)
-      cell_enc_bw = GRUCell(num_units)
-      cell_enc = GRUCell(num_units)
-      cell_dec = GRUCell(decoder_num_units)
-    elif cell_type=="LNBLSTM":
-      cell_enc_fw = LNBLSTMCell(num_units)
-      cell_enc_bw = LNBLSTMCell(num_units)
-      cell_enc = LNBLSTMCell(num_units)
-      cell_dec = LNBLSTMCell(decoder_num_units)
+  def build_cell(self, num_units, decoder_num_units, cell_type="LSTMCell"):
+    Cell = locate("tensorflow.contrib.rnn." + cell_type)
+    if Cell is None:
+      raise ValueError("Invalid cell type " + cell_type)
+    cell_enc_fw = Cell(num_units)
+    cell_enc_bw = Cell(num_units)
+    cell_enc = Cell(num_units)
+    cell_dec = Cell(decoder_num_units)
 
     # Dropout wrapper
     cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
@@ -301,7 +297,7 @@ class EncDec():
     return outputs
 
   def decoder_train_attn(self, cell, decoder_inputs, seq_len_enc, seq_len_dec,
-      encoder_state, attention_states, mem_units, attn_units):
+      encoder_state, attention_states, mem_units, attn_units, output_layer=None):
     """
     Args:
       cell: an instance of RNNCell.
@@ -312,9 +308,23 @@ class EncDec():
       attention_states: hidden states (from encoder) to attend over.
       mem_units: num of units in attention_states
       attn_units: depth of attention (output) tensor
+      output_layer: Dense layer to project output units to vocab
     Returns:
-      outputs.rnn_output : decoder hidden states at all time steps
-      final_state.attention : last hidden state
+      outputs: a BasicDecoderOutput with properties:
+        rnn_output: outputs across time,
+          if output_layer, then [batch_size,dec_seq_len, out_size]
+          otherwise output is [batch_size,dec_seq_len, cell_num_units]
+        sample_id: an argmax over time of rnn_output, Tensor of shape
+          [batch_size, dec_seq_len]
+      final_state: an AttentionWrapperState, a namedtuple which contains:
+        cell_state: such as LSTMStateTuple
+        attention: attention emitted at previous time step
+        time: current time step (the last one)
+        alignments: Tensor of alignments emitted at previous time step for
+          each attention mechanism
+        alignment_history: TensorArray of laignment matrices from all time
+          steps for each attention mechanism. Call stack() on each to convert
+          to Tensor
     """
 
     # Attention Mechanisms. Bahdanau is additive style attention
@@ -333,7 +343,7 @@ class EncDec():
         alignment_history = True, # whether to store history in final output
         name="attention_wrapper")
 
-    # TrainingHelper does no sampling, only uses inputs
+    # TrainingHelper does no sampling, only uses sequence inputs
     helper = tf.contrib.seq2seq.TrainingHelper(
         inputs = decoder_inputs, # decoder inputs
         sequence_length = seq_len_dec, # decoder input length
@@ -346,19 +356,23 @@ class EncDec():
                     batch_size=batch_size, dtype=self.float_type)
     initial_state = initial_state.clone(cell_state = encoder_state)
 
-    # Decoder setup
+    # Decoder setup. This decoder takes inputs and states and feeds it to the
+    # RNN cell at every timestep
     decoder = tf.contrib.seq2seq.BasicDecoder(
-              cell = attn_cell,
-              helper = helper, # A Helper instance
-              initial_state = initial_state, # initial state of decoder
-              output_layer = None) # instance of tf.layers.Layer, like Dense
+          cell = attn_cell,
+          helper = helper, # A Helper instance
+          initial_state = initial_state, # initial state of decoder
+          output_layer = output_layer) # instance of tf.layers.Layer, like Dense
 
     # Perform dynamic decoding with decoder object
     # Outputs is a BasicDecoder object with properties rnn_output and sample_id
+    # If impute_fnished=True ensures finished states are copied through,
+    # corresponding outputs are zeroed out. For proper backprop
     outputs, final_state, final_sequence_lengths= \
-                                  tf.contrib.seq2seq.dynamic_decode(\
-                                  decoder=decoder,
-                                  impute_finished=True)
+                        tf.contrib.seq2seq.dynamic_decode(\
+                        decoder=decoder,
+                        impute_finished=True,
+                        maximum_iterations=None) # decode till decoder is done
     return outputs, final_state, final_sequence_lengths
 
   def decoder_inference(self, cell, x, seq_len, encoder_state,bos_id, eos_id,

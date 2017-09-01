@@ -7,6 +7,7 @@ import os
 import re
 import json
 import copy
+from random import shuffle
 
 def scan_folder(directory, output_file):
   """ Scan raw PDTB files and save as a single json """
@@ -26,11 +27,18 @@ def scan_folder(directory, output_file):
         print("*****Process terminated*****")
         sys.exit()
 
-def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True):
-  """ From the master json, create datasets of positive/negative
+def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True,
+    types = ['Implicit', 'EntRel']):
+  """
+  From the master json, creates datasets of positive/negative class and
+  adds the top level mapped relation.
+
   Arg:
-    sampling: if equal_negative is true, "down" will downsample largest,
-      and "over" will oversample smallest category
+    sampling: "down" or "over. If equal_negative is true, "down" will
+      downsample largest, and "over" will oversample smallest category
+  Returns:
+    list of all discourse dictionaries
+
   Note:
   - Breakdown according to Pitler et al, 2009
   - The training set is balanced 50/50, negative randomly sampled
@@ -45,7 +53,6 @@ def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True)
   pdtb = _list_of_dict(pdtb)
 
   # Only these types
-  types = ['Implicit', 'EntRel']
   print('Getting relations for these types: ', types)
   final_set = []
 
@@ -77,6 +84,61 @@ def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True)
     final_set.extend(copy.deepcopy(negative_set))
 
   return final_set
+
+def make_equal_random_dataset(pdtb, mapping, hold_val, hold_test,
+                                            types = ['Implicit', 'EntRel']):
+  """
+  Makes large dataset with equal positive/negative
+  Randomly splits into train/validation/test
+
+  Args:
+    pdtb: path to complete original pdtb json
+    mapping: path to file mapping lower to higher relations
+
+  Returns:
+    3 jsons: train, val, test
+  """
+  # Make the dataset over all sections
+  # disc_ls is a list of dictionaries
+  disc_ls = make_data_set(pdtb, mapping, rng=None, sampling="over",
+                                      equal_negative=True, types=types)
+
+  mapping = _dict_from_json(mapping)
+  relations = set(mapping.values())
+
+  # Setup struct to divide the dataset
+  dataset = {}
+  for relation in relations:
+    dataset[relation] = {'positive': [], 'negative': []}
+
+  # Get lists of pos/neg for each relation
+  for i, disc in enumerate(disc_ls):
+    relation = disc['Relation']
+    cl = disc['Class']
+    dataset[relation][cl].append(i)
+
+  train_set = []
+  val_set = []
+  test_set = []
+  # Randomize
+  for k, d_set in dataset.items():
+    shuffle(d_set['positive'])
+    shuffle(d_set['negative'])
+
+    # Split
+    count = len(d_set['positive'])
+    va_count, te_count = int(count*hold_val), int(count*hold_test)
+    tr_count = count - va_count - te_count
+
+    # Train, validation, test
+    train_set.extend([disc_ls[x] for x in d_set['positive'][0:tr_count]])
+    train_set.extend([disc_ls[x] for x in d_set['negative'][0:tr_count]])
+    val_set.extend([disc_ls[x] for x in d_set['positive'][tr_count:tr_count+va_count]])
+    val_set.extend([disc_ls[x] for x in d_set['negative'][tr_count:tr_count+va_count]])
+    test_set.extend([disc_ls[x] for x in d_set['positive'][tr_count+va_count:]])
+    test_set.extend([disc_ls[x] for x in d_set['negative'][tr_count+va_count:]])
+
+  return train_set, val_set, test_set
 
 def _downsample_set(positive_set, negative_set):
   """ The largest set is reduced by random sampling """
@@ -122,7 +184,7 @@ def _extract_disc(pdtb, relation, sections, types, mapping, new_label,
     relation: Top level relation, Example "Temporal"
     sections: a range of sections
     types: such as Implicit
-    mapping: dictionary, map to this relation first
+    mapping: dictionary, map to this jelation first
   """
   #TODO if no sections, take all sections
   data_set = []
@@ -185,7 +247,7 @@ def _list_of_dict(file_path):
     for line in f:
       j = json.loads(line)
       # If no id, add ID from line number
-      j['ID'] = line_count
+      # j['ID'] = line_count
       line_count += 1
       dataset.append(j)
   return dataset
@@ -303,15 +365,15 @@ if __name__ == "__main__":
             # equal_negative=True)
   # dict_to_json(train_data, 'data/one_v_all_train.json')
 
-  print('Getting dev set: Dev')
-  dev_range = range(23, 24+1)
-  dev_data = make_data_set(\
-            pdtb='data/all_pdtb.json',
-            mapping='data/map_pdtb_top.json',
-            rng=dev_range,
-            sampling=None,
-            equal_negative=False)
-  dict_to_json(dev_data, 'data/one_v_all_dev2.json')
+  # print('Getting dev set: Dev')
+  # dev_range = range(23, 24+1)
+  # dev_data = make_data_set(\
+            # pdtb='data/all_pdtb.json',
+            # mapping='data/map_pdtb_top.json',
+            # rng=dev_range,
+            # sampling=None,
+            # equal_negative=False)
+  # dict_to_json(dev_data, 'data/one_v_all_dev2.json')
 
   # print('Getting test set: Test')
   # test_range = range(21, 22+1)
@@ -322,3 +384,15 @@ if __name__ == "__main__":
             # sampling=None,
             # equal_negative=False)
   # dict_to_json(test_data, 'data/one_v_all_test.json')
+
+  # Randomize and split even
+  pdtb='pdtb.json'
+  mapping='mapping.json'
+  train_set, val_set, test_set =  make_equal_random_dataset(
+    pdtb, mapping, hold_val=0.2, hold_test=0.2,types = ['Explicit'])
+
+  # Save the sets
+  dict_to_json(train_set, 'binary_explicit/one_v_all_train.json')
+  dict_to_json(val_set, 'binary_explicit/one_v_all_dev.json')
+  dict_to_json(test_set, 'binary_explicit/one_v_all_test.json')
+
