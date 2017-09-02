@@ -11,6 +11,7 @@ import os.path
 from conll_utils.scorer import f1_non_explicit
 
 dtype='int32' # default numpy int dtype
+np.random.seed(1)
 
 # TODO : checkout tf.contrib preprocessing for tokenization
 class Data():

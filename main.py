@@ -283,6 +283,7 @@ def train(params):
 
   # Declare model with hyperparams
   with tf.Graph().as_default(), tf.Session() as sess:
+    tf.set_random_seed(1)
     model = EncDec(\
             num_units=params['cell_units'],
             dec_out_units=params['dec_out_units'],
