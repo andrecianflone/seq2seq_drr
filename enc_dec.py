@@ -9,9 +9,9 @@ from pydoc import locate
 class EncDec():
   """ Encoder Decoder """
   def __init__(self,num_units, dec_out_units, max_seq_len, num_classes,
-      embedding, emb_dim, cell_type, attention, bidirectional=True, emb_trainable=False,
-      class_over_sequence=False, hidden_size=120, fc_num_layers=1, opt='Adam',
-      l_rate=0.01):
+      embedding, emb_dim, cell_type, attention, start_token, end_token,
+      bidirectional=True, emb_trainable=False, class_over_sequence=False,
+      hidden_size=120, fc_num_layers=1, opt='Adam', l_rate=0.01,):
     """
     Args:
       num_units : dimension of recurrent cells
@@ -26,6 +26,7 @@ class EncDec():
     """
     self.num_classes = num_classes
     self.keep_prob = tf.placeholder(tf.float32)
+    self.mode_train = tf.placeholder(tf.bool)
     self.float_type = tf.float32
     self.int_type = tf.int32
     self.final_emb_dim = emb_dim + num_classes
@@ -34,6 +35,8 @@ class EncDec():
     self.hidden_size = hidden_size
     self.fc_num_layers = fc_num_layers # num layers for fully connected class
     self.opt = opt # Optimizer
+    self.start_token = start_token
+    self.end_token = end_token
     self.l_rate = l_rate # learning rate
     if self.bidirectional == True:
       decoder_num_units = num_units *2 # double if bidirectional
@@ -96,7 +99,7 @@ class EncDec():
     output_layer = tf.contrib.keras.layers.Dense(self.vocab_size, use_bias=False)
     with tf.name_scope("decoder"):
       self.decoded_outputs, self.decoded_final_state, self.decoded_final_seq_len=\
-                          self.decoder_train_attn(
+                          self.decoder(
                             cell=cell_dec,
                             decoder_inputs=self.dec_embedded,
                             seq_len_enc=self.enc_input_len,
@@ -296,8 +299,9 @@ class EncDec():
 
     return outputs
 
-  def decoder_train_attn(self, cell, decoder_inputs, seq_len_enc, seq_len_dec,
-      encoder_state, attention_states, mem_units, attn_units, output_layer=None):
+  def decoder(self, cell, decoder_inputs, seq_len_enc, seq_len_dec,
+      encoder_state, attention_states, mem_units, attn_units,
+      output_layer=None):
     """
     Args:
       cell: an instance of RNNCell.
@@ -343,15 +347,22 @@ class EncDec():
         alignment_history = True, # whether to store history in final output
         name="attention_wrapper")
 
-    # TrainingHelper does no sampling, only uses sequence inputs
-    helper = tf.contrib.seq2seq.TrainingHelper(
-        inputs = decoder_inputs, # decoder inputs
-        sequence_length = seq_len_dec, # decoder input length
-        name = "decoder_training_helper")
+    batch_size = tf.shape(decoder_inputs)[0]
+    if self.mode_train==True:
+      # TrainingHelper does no sampling, only uses sequence inputs
+      helper = tf.contrib.seq2seq.TrainingHelper(
+          inputs = decoder_inputs, # decoder inputs
+          sequence_length = seq_len_dec, # decoder input length
+          name = "decoder_training_helper")
+    else:
+      # Greedy decoder
+      helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
+          embedding=self.embedding_tensor,
+          start_tokens=tf.tile([self.start_token], [batch_size]),
+          end_token=self.end_token)
 
     # Initial state for decoder
     # Clone attention state from current attention, but use encoder_state
-    batch_size = tf.shape(decoder_inputs)[0]
     initial_state = attn_cell.zero_state(\
                     batch_size=batch_size, dtype=self.float_type)
     initial_state = initial_state.clone(cell_state = encoder_state)
