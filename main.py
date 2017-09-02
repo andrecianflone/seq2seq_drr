@@ -102,7 +102,7 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
 def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
                     prog, writer=None):
   """ Train 'model' using 'data' for a single epoch """
-  fetch = [model.class_optimizer, model.class_cost, model.global_step]
+  fetch = [model.optimizer, model.cost, model.global_step]
 
   if writer is not None:
     fetch.append(model.merged_summary_ops)

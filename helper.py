@@ -508,60 +508,37 @@ def clean_str(string):
 def settings(path):
   """ Returns settings dictionary """
   with codecs.open(path, encoding='utf-8') as f:
-    settings = json.load(f)
+    s= json.load(f)
 
-  # Fix random init unknown
-  settings['random_init_unknown'] = parse_bool(settings['random_init_unknown'])
+  s['random_init_unknown'] = parse_bool(s['random_init_unknown'])
+  s['max_vocab'] = parse_int(s['max_vocab'])
+  s['emb_trainable'] = parse_bool(s['emb_trainable'])
+  s['tensorboard_write'] = parse_bool(s['tensorboard_write'])
 
-  # Fix max vocab
-  settings['max_vocab'] = parse_int(settings['max_vocab'])
+  hparams = HParams(
+    batch_size          = parse_int(s['hp']['batch_size']),
+    cell_units          = parse_int(s['hp']['cell_units']),
+    dec_out_units       = parse_int(s['hp']['dec_out_units']),
+    num_layers          = parse_int(s['hp']['num_layers']),
+    keep_prob           = parse_float(s['hp']['keep_prob']),
+    nb_epochs           = parse_int(s['hp']['nb_epochs']),
+    early_stop_epoch    = parse_int(s['hp']['early_stop_epoch']),
+    bidirectional       = parse_bool(s['hp']['bidirectional']),
+    learning_rate       = parse_float(s['hp']['learning_rate']),
+    attention           = parse_bool(s['hp']['attention']),
+    class_over_sequence = parse_bool(s['hp']['class_over_sequence']),
+    hidden_size         = parse_int(s['hp']['hidden_size']),
+    fc_num_layers       = parse_int(s['hp']['fc_num_layers']),
+    max_arg_len         = parse_int(s['hp']['max_arg_len']),
+    maxlen              = max_arg_len*2,
+    unknown_tag         = s['hp']['unknown_tag'],
+    pad_tag             = s['hp']['pad_tag'],
+    bos_tag             = s['hp']['bos_tag'],
+    eos_tag             = s['hp']['eos_tag'],
+    emb_trainable       = s['hp']['emb_trainable']
+  )
 
-  # fix embedding trainable
-  settings['emb_trainable'] = parse_bool(settings['emb_trainable'])
-
-  # fix tensorboard write
-  settings['tensorboard_write'] = parse_bool(settings['tensorboard_write'])
-
-  # Fix training batch size
-  settings['hp']['batch_size'] = parse_int(settings['hp']['batch_size'])
-
-  # Fix hidden layer size
-  settings['hp']['cell_units'] = parse_int(settings['hp']['cell_units'])
-
-  # Fix output from decoder
-  settings['hp']['dec_out_units'] = parse_int(settings['hp']['dec_out_units'])
-
-  # Fix num layers
-  settings['hp']['num_layers'] = parse_int(settings['hp']['num_layers'])
-
-  # Fix dropout keep probability
-  settings['hp']['keep_prob'] = parse_float(settings['hp']['keep_prob'])
-
-  # Fix max training epochs
-  settings['hp']['nb_epochs'] = parse_int(settings['hp']['nb_epochs'])
-
-  # Fix stop after n epochs w/o improvement on val set
-  settings['hp']['early_stop_epoch'] = parse_int(settings['hp']['early_stop_epoch'])
-
-  # Fix bidirectional
-  settings['hp']['bidirectional'] = parse_bool(settings['hp']['bidirectional'])
-
-  # Fix learning rate
-  settings['hp']['learning_rate'] = parse_float(settings['hp']['learning_rate'])
-
-  # Fix attention
-  settings['hp']['attention'] = parse_bool(settings['hp']['attention'])
-
-  # Fix class over sequence
-  settings['hp']['class_over_sequence'] = parse_bool(settings['hp']['class_over_sequence'])
-
-  # Fix hidden_size
-  settings['hp']['hidden_size'] = parse_int(settings['hp']['hidden_size'])
-
-  # Fix hidden_size
-  settings['hp']['fc_num_layers'] = parse_int(settings['hp']['fc_num_layers'])
-
-  return settings
+  return hparams, s
 
 def parse_bool(val):
   if val == "True":
@@ -582,6 +559,15 @@ def parse_float(val):
     return None
   else:
     return float(val)
+
+class HParams():
+  def __init__(self, **kwargs):
+    for k, v in kwargs.items():
+      setattr(self, k, v)
+
+  def update(self, **kwargs):
+    for k, v in kwargs.items():
+      setattr(self, k, v)
 
 def alignment(enc_in, dec_in, alignment, inv_vocab):
   """ process data and save alignments """
