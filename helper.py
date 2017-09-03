@@ -512,25 +512,27 @@ def settings(path):
 
   s['random_init_unknown'] = parse_bool(s['random_init_unknown'])
   s['max_vocab'] = parse_int(s['max_vocab'])
-  s['emb_trainable'] = parse_bool(s['emb_trainable'])
   s['tensorboard_write'] = parse_bool(s['tensorboard_write'])
 
   hparams = HParams(
     batch_size          = parse_int(s['hp']['batch_size']),
     cell_units          = parse_int(s['hp']['cell_units']),
+    cell_type           = s['hp']['cell_type'],
+    optimizer           = s['hp']['optimizer'],
     dec_out_units       = parse_int(s['hp']['dec_out_units']),
     num_layers          = parse_int(s['hp']['num_layers']),
     keep_prob           = parse_float(s['hp']['keep_prob']),
     nb_epochs           = parse_int(s['hp']['nb_epochs']),
     early_stop_epoch    = parse_int(s['hp']['early_stop_epoch']),
     bidirectional       = parse_bool(s['hp']['bidirectional']),
-    learning_rate       = parse_float(s['hp']['learning_rate']),
+    l_rate              = parse_float(s['hp']['l_rate']),
     attention           = parse_bool(s['hp']['attention']),
     class_over_sequence = parse_bool(s['hp']['class_over_sequence']),
     hidden_size         = parse_int(s['hp']['hidden_size']),
     fc_num_layers       = parse_int(s['hp']['fc_num_layers']),
     max_arg_len         = parse_int(s['hp']['max_arg_len']),
-    maxlen              = max_arg_len*2,
+    max_seq_len         = parse_int(s['hp']['max_arg_len']),
+    maxlen              = parse_int(s['hp']['max_arg_len'])*2,
     unknown_tag         = s['hp']['unknown_tag'],
     pad_tag             = s['hp']['pad_tag'],
     bos_tag             = s['hp']['bos_tag'],

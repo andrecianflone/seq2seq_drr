@@ -1,28 +1,69 @@
-from tensorflow import tf
-from helper import make_batches
+import tensorflow as tf
+from helper import make_batches, MiniData
+from utils import Progress, Metrics, Callback
+import numpy as np
+import sys
 
 ###############################################################################
 # Training/Testing functions
 ###############################################################################
 def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
-              shuffle, mode_train):
+              shuffle, mode):
   """ Calls models and yields results per batch """
   batches = make_batches(data, batch_size, num_batches, shuffle=shuffle)
   for batch in batches:
     feed = {
              model.enc_input       : batch.encoder_input,
              model.enc_input_len   : batch.seq_len_encoder,
-             model.classes         : batch.classes,
+             # model.classes         : batch.classes,
              model.dec_targets     : batch.decoder_target,
              model.dec_input       : batch.decoder_input,
              model.dec_input_len   : batch.seq_len_decoder,
              model.dec_weight_mask : batch.decoder_mask,
              model.keep_prob       : keep_prob,
-             model.mode_train      : mode_train
+             model.mode            : mode
            }
 
+    # try:
+    step = model.global_step.eval()
+    logs, targets = sess.run([model.seq_logits, model.dec_targets], feed)
+
     result = sess.run(fetch,feed)
+    # except:
+      # e = sys.exc_info()[1]
+      # print('Got following type of error: ', type(e))
+      # print(e)
+      # sys.exit(1)
+      # pass
     yield result
+
+def generate_text(sess, model, data, index, vocab, inv_vocab):
+  """
+  Return a sample of text generated, dependent on encoder input, and index
+  """
+  ids = [index,index+1]
+  sample = MiniData(data, ids)
+  fetch = [model.sample_id]
+  feed = {
+           model.enc_input       : sample.encoder_input,
+           model.enc_input_len   : sample.seq_len_encoder,
+           model.dec_targets     : sample.decoder_target,
+           model.dec_input       : sample.decoder_input,
+           model.dec_input_len   : sample.seq_len_decoder,
+           model.dec_weight_mask : sample.decoder_mask,
+           model.keep_prob       : 1,
+           model.mode            : 0
+         }
+  result = sess.run(fetch,feed)
+  predicted = result[0]
+
+  # Swap for words
+  encoded = ' '.join([inv_vocab[x] for x in sample.encoder_input[0,:]])
+  decoded = ' '.join([inv_vocab[x] for x in predicted[0,:]])
+  target  = ' '.join([inv_vocab[x] for x in sample.decoder_target[0,:]])
+  relation = sample.classes[0]
+
+  return relation, encoded, decoded, target
 
 def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
                     prog, writer=None):
@@ -33,7 +74,7 @@ def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
     fetch.append(model.merged_summary_ops)
 
   batch_results = call_model(sess, model, data, fetch, batch_size, num_batches,
-                             keep_prob, shuffle=True, mode_train=True)
+                             keep_prob, shuffle=True, mode=1)
   for result in batch_results:
     loss = result[1]
     global_step = result[2]
@@ -88,13 +129,11 @@ def classification_f1(sess, data, model, batch_size, num_batches_test):
   f1_conll =f1_micro
   return f1_micro, f1_conll, acc, alignment_ls
 
-def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
+def test_set_decoder_loss(sess, data, model, batch_size, num_batches):
   """ Get the total loss for the entire batch """
-  data = [x_test_enc, x_test_dec, classes_test, enc_len_test,
-          dec_len_test, dec_test, dec_mask_test]
-  fetch = [model.batch_size, model.class_cost]
-  losses = np.zeros(num_batches_test) # to average the losses
-  batch_w = np.zeros(num_batches_test) # batch weight
+  fetch = [model.batch_size, model.cost]
+  losses = np.zeros(num_batches) # to average the losses
+  batch_w = np.zeros(num_batches) # batch weight
   batch_results = call_model(sess, model, data, fetch, batch_size, num_batches,
                               keep_prob=1, shuffle=False, mode_train=False)
   for i, result in enumerate(batch_results):
@@ -105,7 +144,7 @@ def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
 
   # Average across batches
   av = np.average(losses, weights=batch_w)
-  prog.print_eval('decoder loss', av)
+  return av
 
 def language_model_class_loss():
   """ Try all label conditioning for eval dataset
@@ -148,3 +187,88 @@ def language_model_class_loss():
   correct = predictions == gold # compare how many match
   accuracy = np.sum(correct)/len(correct)
   prog.print_class_eval(accuracy)
+
+current_trial = 0
+# Launch training
+def train(params, Model, embedding, emb_dim, dataset_dict, vocab, inv_vocab):
+  global hparams
+  hparams=params
+  global current_trial
+  current_trial += 1
+  print('-' * 79)
+  print('Current trial: {}'.format(current_trial))
+  print('-' * 79)
+  # tf.reset_default_graph() # reset the graph for each trial
+  batch_size = hparams.batch_size
+  train_set = dataset_dict['training_set']
+  val_set = dataset_dict['validation_set']
+  prog = Progress(batches=train_set.num_batches(batch_size), progress_bar=True,
+                  bar_length=10)
+  met = Metrics(monitor="val_f1")
+  cb = Callback(hparams.early_stop_epoch, met, prog)
+
+  # Print some info
+  # pprint(hparams)
+  # Dataset info
+  for name, dataset in dataset_dict.items():
+    print('Size of {} : {}'.format(name, dataset.size()))
+
+  # Save trials along the way
+  # pickle.dump(trials, open("trials.p","wb"))
+
+  # Declare model with hyperhparams
+  with tf.Graph().as_default(), tf.Session() as sess:
+    tf.set_random_seed(1)
+    model = Model(hparams, embedding, emb_dim)
+
+    # Save info for tensorboard
+    # if settings['tensorboard_write'] == True:
+      # writer = tf.summary.FileWriter('logs', sess.graph)
+    # else:
+      # writer = None
+
+    # Start training
+    tf.global_variables_initializer().run()
+
+    # Prediction test
+    relation, encoded, decoded, target = generate_text(sess, model, val_set, 9, vocab, inv_vocab)
+    print('\nrelation: {}'.format(relation))
+    print('encoded: {}'.format(encoded))
+    print('target: {}'.format(target))
+    for epoch in range(hparams.nb_epochs):
+      prog.epoch_start()
+
+      # Training set
+      train_one_epoch(sess, train_set, model, hparams.keep_prob,
+                  batch_size, train_set.num_batches(batch_size), prog)
+
+      # Test an output! See how it evolves!
+      _, _, decoded, _ = generate_text(sess, model, val_set, 9, vocab, inv_vocab)
+      print('\ndecoded: {}'.format(decoded),end='')
+
+      # # Validation Set
+      # prog.print_cust('|| {} '.format(val_set.short_name))
+      # loss = test_set_decoder_loss(
+              # sess, val_set, model, batch_size, val_set.num_batches(batch_size))
+      # met.update(val_set.short_name + '_loss', loss)
+      # prog.print_eval('loss', loss)
+
+      # # Previous best f1 on test -> for alignment
+      # prev_best = met.metric_dict["loss"]
+
+      # for k, dataset in dataset_dict.items():
+        # if k == "training_set": continue # skip training, already done
+        # if k == "validation_set": continue # skip validation, already done
+
+        # # Other sets
+        # prog.print_cust('|| {} '.format(dataset.short_name))
+        # loss = classification_f1(
+            # sess, dataset, model, batch_size, dataset.num_batches(batch_size))
+        # met.update(dataset.short_name + '_loss', loss)
+        # prog.print_eval('loss', loss)
+
+      # if cb.early_stop() == True: break
+      prog.epoch_end()
+    # print(met)
+    prog.epoch_end()
+

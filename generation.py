@@ -10,12 +10,13 @@ For a single trial, call script without arguments
 -----------
 """
 from helper import Preprocess, Data, MiniData, make_batches, settings, alignment
+from enc_dec import EncDecGen, EncDecClass
+from training import train
 from embeddings import Embeddings
 import tensorflow as tf
 from sklearn.metrics import f1_score, accuracy_score
 import numpy as np
 from enc_dec import EncDec
-from utils import Progress, Metrics, Callback
 import sys
 from six.moves import cPickle as pickle
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
@@ -49,10 +50,13 @@ data_class = Preprocess(
             bos_tag = hparams.bos_tag,
             eos_tag = hparams.eos_tag)
 
+vocab = data_class.vocab
+inv_vocab = data_class.inv_vocab
+
 # Get the integer value for bos and eos tags
 hparams.update(
-  start_token = data_class.vocab[hparams.bos_tag],
-  end_token = data_class.vocab[hparams.eos_tag],
+  start_token = vocab[hparams.bos_tag],
+  end_token = vocab[hparams.eos_tag],
 )
 
 # Data sets as Data objects
@@ -60,10 +64,10 @@ dataset_dict = data_class.data_collect
 
 # Word embeddings
 emb = Embeddings(
-    data_class.vocab,
-    data_class.inv_vocab,
-    random_init_unknown=settings['random_init_unknown'],
-    unknown_tag = settings['unknown_tag'])
+        vocab,
+        inv_vocab,
+        random_init_unknown=settings['random_init_unknown'],
+        unknown_tag = hparams.unknown_tag)
 
 # embedding is a numpy array [vocab size x embedding dimension]
 embedding = emb.get_embedding_matrix(\
@@ -73,7 +77,7 @@ embedding = emb.get_embedding_matrix(\
             load_saved=True)
 
 ###############################################################################
-# Train
+# Main
 ###############################################################################
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=__doc__,
@@ -82,9 +86,11 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   if args.task == 'generation':
-    model = EncDecGen()
+    model = EncDecGen
   else:
-    model = EncDecClass()
+    model = EncDecClass
+
+  train(hparams, model, embedding, 300, dataset_dict, vocab, inv_vocab)
 
 
 

@@ -1,16 +1,16 @@
 {
   "Comments_on_hp" : {
-    "cell_units" : "dimension of recurrent cells",
+    "cell_units"    : "dimension of recurrent cells",
     "dec_out_units" : "dimension of decoder output",
-    "max_seq_len" : "maximum length of a sequence",
-    "emb_dim" : "size of an embedding",
-    "cell_type" : "type of recurrent cell, LSTM or GRU",
+    "max_seq_len"   : "maximum length of a sequence",
+    "emb_dim"       : "size of an embedding",
+    "cell_type"     : "type of recurrent cell, LSTM or GRU",
     "bidirectional" : "if false, then unidirectional and no concat",
     "emb_trainable" : "if true embedding vectors are updated during training",
-    "optimizer"           : "AdamOptimizer or GradientDescentOptimizer",
+    "optimizer"     : "AdamOptimizer or GradientDescentOptimizer"
   },
   "hp" : {
-    "batch_size"          : "64",
+    "batch_size"          : "32",
     "cell_units"          : "32",
     "dec_out_units"       : "32",
     "num_layers"          : "2",
@@ -33,7 +33,7 @@
     "emb_trainable"       : "False"
   },
   "tensorboard_write" : "False",
-  "use_dataset" : "one_v_all",
+  "use_dataset" : "conll",
   "max_vocab" : "10000",
   "random_init_unknown" : "False",
   "embedding" : {
