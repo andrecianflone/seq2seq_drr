@@ -3,6 +3,9 @@ from helper import make_batches, MiniData
 from utils import Progress, Metrics, Callback
 import numpy as np
 import sys
+from pprint import pprint
+from sklearn.metrics import f1_score, accuracy_score
+from six.moves import cPickle as pickle
 
 ###############################################################################
 # Training/Testing functions
@@ -15,26 +18,15 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
     feed = {
              model.enc_input       : batch.encoder_input,
              model.enc_input_len   : batch.seq_len_encoder,
-             # model.classes         : batch.classes,
+             model.classes         : batch.classes,
              model.dec_targets     : batch.decoder_target,
              model.dec_input       : batch.decoder_input,
              model.dec_input_len   : batch.seq_len_decoder,
-             model.dec_weight_mask : batch.decoder_mask,
              model.keep_prob       : keep_prob,
-             model.mode            : mode
+             model.mode            : mode # 1 for train, 0 for testing
            }
 
-    # try:
-    step = model.global_step.eval()
-    logs, targets = sess.run([model.seq_logits, model.dec_targets], feed)
-
     result = sess.run(fetch,feed)
-    # except:
-      # e = sys.exc_info()[1]
-      # print('Got following type of error: ', type(e))
-      # print(e)
-      # sys.exit(1)
-      # pass
     yield result
 
 def generate_text(sess, model, data, index, vocab, inv_vocab):
@@ -50,7 +42,6 @@ def generate_text(sess, model, data, index, vocab, inv_vocab):
            model.dec_targets     : sample.decoder_target,
            model.dec_input       : sample.decoder_input,
            model.dec_input_len   : sample.seq_len_decoder,
-           model.dec_weight_mask : sample.decoder_mask,
            model.keep_prob       : 1,
            model.mode            : 0
          }
@@ -84,13 +75,16 @@ def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
       writer.add_summary(summary, global_step)
     # break
 
-def classification_f1(sess, data, model, batch_size, num_batches_test):
-  """ Get the total loss for the entire batch """
-  fetch = [model.batch_size, model.class_cost, model.y_pred, model.y_true]
+def classification_f1(sess, data, model, batch_size, num_batches_test, save_align):
+  """
+  Get the total loss for the entire batch
+  Args:
+    save_align: if true, will save alignment history to disk, from hparams
+  """
+  fetch = [model.batch_size, model.cost, model.y_pred, model.y_true]
 
-  alignment_history = True
   alignment_ls = []
-  if alignment_history == True:
+  if save_align == True:
     fetch.append(model.enc_input)
     fetch.append(model.dec_input)
     fetch.append(model.alignment_history)
@@ -98,7 +92,7 @@ def classification_f1(sess, data, model, batch_size, num_batches_test):
   y_pred = np.zeros(data.size())
   y_true = np.zeros(data.size())
   batch_results = call_model(sess, model, data, fetch, batch_size,
-               num_batches_test, keep_prob=1, shuffle=False, mode_train=False)
+               num_batches_test, keep_prob=1, shuffle=False, mode=0)
   start_id = 0
   for i, result in enumerate(batch_results):
     batch_size                           = result[0]
@@ -106,7 +100,7 @@ def classification_f1(sess, data, model, batch_size, num_batches_test):
     y_pred[start_id:start_id+batch_size] = result[2]
     y_true[start_id:start_id+batch_size] = result[3]
     start_id += batch_size
-    if alignment_history == True:
+    if save_align == True:
       enc_in = result[4]
       dec_in = result[5]
       align  = result[6]
@@ -115,9 +109,9 @@ def classification_f1(sess, data, model, batch_size, num_batches_test):
 
   # Metrics
   # f1 score depending on number of classes
-  if data_class.num_classes == 2:
+  if data.num_classes == 2:
     # If only 2 classes, then one is positive, and average is binary
-    pos_label = np.argmax(data_class.sense_to_one_hot['positive'])
+    pos_label = np.argmax(data.sense_to_one_hot['positive'])
     average = 'binary'
     f1_micro = f1_score(y_true, y_pred, pos_label=pos_label, average='binary')
   else:
@@ -135,7 +129,7 @@ def test_set_decoder_loss(sess, data, model, batch_size, num_batches):
   losses = np.zeros(num_batches) # to average the losses
   batch_w = np.zeros(num_batches) # batch weight
   batch_results = call_model(sess, model, data, fetch, batch_size, num_batches,
-                              keep_prob=1, shuffle=False, mode_train=False)
+                              keep_prob=1, shuffle=False, mode=0)
   for i, result in enumerate(batch_results):
     # Keep track of losses to average later
     cur_b_size = result[0]
@@ -160,7 +154,7 @@ def language_model_class_loss():
     assert classes_test.shape == classes.shape
 
     data = [x_test_enc, x_test_dec, classes, enc_len_test,
-          dec_len_test, dec_test, dec_mask_test]
+          dec_len_test, dec_test]
     fetch = [model.batch_size, model.generator_loss, model.softmax_logits,
               model.dec_targets]
     batch_results = call_model(sess, model, data, fetch, batch_size,
@@ -190,7 +184,7 @@ def language_model_class_loss():
 
 current_trial = 0
 # Launch training
-def train(params, Model, embedding, emb_dim, dataset_dict, vocab, inv_vocab):
+def train(params, settings, Model, embedding, emb_dim, dataset_dict, vocab, inv_vocab):
   global hparams
   hparams=params
   global current_trial
@@ -199,16 +193,13 @@ def train(params, Model, embedding, emb_dim, dataset_dict, vocab, inv_vocab):
   print('Current trial: {}'.format(current_trial))
   print('-' * 79)
   # tf.reset_default_graph() # reset the graph for each trial
-  batch_size = hparams.batch_size
   train_set = dataset_dict['training_set']
   val_set = dataset_dict['validation_set']
-  prog = Progress(batches=train_set.num_batches(batch_size), progress_bar=True,
+  prog = Progress(batches=train_set.num_batches(hparams.batch_size), progress_bar=True,
                   bar_length=10)
-  met = Metrics(monitor="val_f1")
-  cb = Callback(hparams.early_stop_epoch, met, prog)
 
   # Print some info
-  # pprint(hparams)
+  pprint(hparams)
   # Dataset info
   for name, dataset in dataset_dict.items():
     print('Size of {} : {}'.format(name, dataset.size()))
@@ -222,53 +213,116 @@ def train(params, Model, embedding, emb_dim, dataset_dict, vocab, inv_vocab):
     model = Model(hparams, embedding, emb_dim)
 
     # Save info for tensorboard
-    # if settings['tensorboard_write'] == True:
-      # writer = tf.summary.FileWriter('logs', sess.graph)
-    # else:
-      # writer = None
+    if settings['tensorboard_write'] == True:
+      writer = tf.summary.FileWriter('logs', sess.graph)
+    else:
+      writer = None
 
-    # Start training
+    # Initialize variables
     tf.global_variables_initializer().run()
 
-    # Prediction test
-    relation, encoded, decoded, target = generate_text(sess, model, val_set, 9, vocab, inv_vocab)
-    print('\nrelation: {}'.format(relation))
-    print('encoded: {}'.format(encoded))
-    print('target: {}'.format(target))
-    for epoch in range(hparams.nb_epochs):
-      prog.epoch_start()
+    # trask specific training
+    if model.model_type == "generative":
+      train_generative(sess, hparams, prog, model,dataset_dict, vocab, inv_vocab)
+    if model.model_type == "classification":
+      train_classification(sess, hparams, prog, model,dataset_dict, vocab, inv_vocab)
 
-      # Training set
-      train_one_epoch(sess, train_set, model, hparams.keep_prob,
-                  batch_size, train_set.num_batches(batch_size), prog)
+def train_generative(sess, hparams, prog, model,dataset_dict, vocab, inv_vocab):
+  train_set = dataset_dict['training_set']
+  val_set = dataset_dict['validation_set']
+  met = Metrics(monitor="loss")
+  cb = Callback(hparams.early_stop_epoch, met, prog)
 
-      # Test an output! See how it evolves!
-      _, _, decoded, _ = generate_text(sess, model, val_set, 9, vocab, inv_vocab)
-      print('\ndecoded: {}'.format(decoded),end='')
+  # Prediction test
+  relation, encoded, decoded, target = generate_text(sess, model, val_set, 9, vocab, inv_vocab)
+  print('\nrelation: {}'.format(relation))
+  print('encoded: {}'.format(encoded))
+  print('target: {}'.format(target))
+  for epoch in range(hparams.nb_epochs):
+    prog.epoch_start()
 
-      # # Validation Set
-      # prog.print_cust('|| {} '.format(val_set.short_name))
-      # loss = test_set_decoder_loss(
-              # sess, val_set, model, batch_size, val_set.num_batches(batch_size))
-      # met.update(val_set.short_name + '_loss', loss)
+    # Training set
+    train_one_epoch(sess, train_set, model, hparams.keep_prob,
+                hparams.batch_size, train_set.num_batches(hparams.batch_size), prog)
+
+    # Test an output! See how it evolves!
+    _, _, decoded, _ = generate_text(sess, model, val_set, 9, vocab, inv_vocab)
+    print('\ndecoded: {}'.format(decoded),end='')
+
+    # # Validation Set
+    # prog.print_cust('|| {} '.format(val_set.short_name))
+    # loss = test_set_decoder_loss(
+            # sess, val_set, model, batch_size, val_set.num_batches(batch_size))
+    # met.update(val_set.short_name + '_loss', loss)
+    # prog.print_eval('loss', loss)
+
+    # # Previous best f1 on test -> for alignment
+    # prev_best = met.metric_dict["loss"]
+
+    # for k, dataset in dataset_dict.items():
+      # if k == "training_set": continue # skip training, already done
+      # if k == "validation_set": continue # skip validation, already done
+
+      # # Other sets
+      # prog.print_cust('|| {} '.format(dataset.short_name))
+      # loss = classification_f1(
+          # sess, dataset, model, batch_size, dataset.num_batches(batch_size))
+      # met.update(dataset.short_name + '_loss', loss)
       # prog.print_eval('loss', loss)
 
-      # # Previous best f1 on test -> for alignment
-      # prev_best = met.metric_dict["loss"]
+    # if cb.early_stop() == True: break
+    prog.epoch_end()
+  pass
 
-      # for k, dataset in dataset_dict.items():
-        # if k == "training_set": continue # skip training, already done
-        # if k == "validation_set": continue # skip validation, already done
+def train_classification(sess, hparams, prog, model, dataset_dict, vocab,
+                                                                    inv_vocab):
+  train_set = dataset_dict['training_set']
+  val_set = dataset_dict['validation_set']
+  met = Metrics(monitor="val_f1")
+  cb = Callback(hparams.early_stop_epoch, met, prog)
+  align = False
 
-        # # Other sets
-        # prog.print_cust('|| {} '.format(dataset.short_name))
-        # loss = classification_f1(
-            # sess, dataset, model, batch_size, dataset.num_batches(batch_size))
-        # met.update(dataset.short_name + '_loss', loss)
-        # prog.print_eval('loss', loss)
+  for epoch in range(hparams.nb_epochs):
+    prog.epoch_start()
 
-      # if cb.early_stop() == True: break
-      prog.epoch_end()
-    # print(met)
+    # Training set
+    train_one_epoch(sess, train_set, model, hparams.keep_prob,
+          hparams.batch_size, train_set.num_batches(hparams.batch_size), prog)
+
+    # Validation Set
+    prog.print_cust('|| {} '.format(val_set.short_name))
+    _, f1, accuracy, alignment = classification_f1(
+        sess, val_set, model, hparams.batch_size,
+        val_set.num_batches(hparams.batch_size), align)
+    met.update(val_set.short_name + '_f1', f1)
+    met.update(val_set.short_name + '_acc', accuracy)
+    prog.print_eval('acc', accuracy)
+    prog.print_eval('f1', f1)
+
+    # Previous best f1 on test -> for alignment
+    prev_best = met.metric_dict["test_f1"]
+
+    for k, dataset in dataset_dict.items():
+      if k == "training_set": continue # skip training, already done
+      if k == "validation_set": continue # skip validation, already done
+
+      # Other sets
+      prog.print_cust('|| {} '.format(dataset.short_name))
+      _, f1, accuracy, alignment = classification_f1(
+          sess, dataset, model, hparams.batch_size,
+          dataset.num_batches(hparams.batch_size), align)
+      met.update(dataset.short_name + '_f1', f1)
+      met.update(dataset.short_name + '_acc', accuracy)
+      prog.print_eval('acc', accuracy)
+      prog.print_eval('f1', f1)
+
+      # if test set better, save alignment
+      if align == True and k == "test_set":
+        if prev_best < met.metric_dict["test_f1"]:
+          # dump pickle
+          pickle.dump(alignment, open("tmp.p", "wb"))
+          print("dumped test alignments to tmp.p file")
+
+    if cb.early_stop() == True: break
     prog.epoch_end()
 

@@ -4,6 +4,8 @@ from tensorflow.contrib.rnn import DropoutWrapper
 from tensorflow.contrib.layers import xavier_initializer as glorot
 from utils import dense
 from pydoc import locate
+# from bnlstm import BN_LSTMCell
+from bnlstm2 import BNLSTMCell as BN_LSTMCell
 
 class EncDec():
   """ Encoder Decoder """
@@ -43,8 +45,8 @@ class EncDec():
     # Encoder inputs
     with tf.name_scope("encoder_input"):
       self.enc_input = tf.placeholder(self.intX, shape=[None, hparams.max_seq_len])
-      enc_embedded = self.embedded(self.enc_input, self.embedding_tensor)
-      self.enc_embedded = tf.layers.batch_normalization(enc_embedded, training=self.mode)
+      self.enc_embedded = self.embedded(self.enc_input, self.embedding_tensor)
+      # self.enc_embedded = tf.layers.batch_normalization(enc_embedded, training=self.mode)
       self.enc_input_len = tf.placeholder(self.intX, shape=[None,])
 
     # Condition on Y ==> Embeddings + labels
@@ -54,12 +56,10 @@ class EncDec():
     with tf.name_scope("decoder_input"):
       self.dec_targets = tf.placeholder(self.intX, shape=[None, hparams.max_seq_len])
       self.dec_input = tf.placeholder(self.intX, shape=[None, hparams.max_seq_len])
-      dec_embedded = self.embedded(self.dec_input, self.embedding_tensor)
-      self.dec_embedded = tf.layers.batch_normalization(dec_embedded, training=self.mode)
+      self.dec_embedded = self.embedded(self.dec_input, self.embedding_tensor)
+      # self.dec_embedded = tf.layers.batch_normalization(dec_embedded, training=self.mode)
       # self.dec_embedded = self.emb_add_class(self.dec_embedded, self.classes)
       self.dec_input_len = tf.placeholder(self.intX, shape=[None,])
-      # weight mask shape [batch_size x sequence_length]
-      self.dec_weight_mask = tf.placeholder(self.floatX, shape=[None, hparams.max_seq_len])
 
     self.batch_size = tf.shape(self.enc_input)[0]
 
@@ -68,7 +68,7 @@ class EncDec():
     ############################
     # Setup cells
     cell_enc_fw, cell_enc_bw, cell_enc, cell_dec = \
-        self._build_cell(hparams.cell_units, decoder_num_units, cell_type=hparams.cell_type)
+        self.build_cell(hparams.cell_units, decoder_num_units, cell_type=hparams.cell_type)
 
     # Get encoder data
     with tf.name_scope("encoder"):
@@ -91,6 +91,7 @@ class EncDec():
                             attn_units=hparams.dec_out_units,
                             encoder_state=self.encoded_state)
 
+      # Get decoder output hidden states
       self.decoded_outputs, self.decoded_final_state, self.decoded_final_seq_len=\
                       self.decoder_train(
                             self.batch_size,
@@ -105,11 +106,17 @@ class EncDec():
     # Merged summary ops
     self.merged_summary_ops = tf.summary.merge_all()
 
-  def get_optimizer(self, l_rate):
+  def optimize_step(self, loss, glbl_step):
+    """ Locate optimizer from hparams, take a step """
     Opt = locate("tensorflow.train." + hparams.optimizer)
     if Opt is None:
       raise ValueError("Invalid optimizer: " + hparams.optimizer)
-    return Opt(l_rate)
+    optimizer = Opt(hparams.l_rate)
+    grads_vars = optimizer.compute_gradients(loss)
+    capped_grads = [(None if grad is None else tf.clip_by_value(grad, -1., 1.), var)\
+                                                  for grad, var in grads_vars]
+    take_step = optimizer.apply_gradients(capped_grads, global_step=glbl_step)
+    return take_step
 
   def embedding_setup(self, embedding, emb_trainable):
     """ If trainable, returns variable, otherwise the original embedding """
@@ -137,14 +144,19 @@ class EncDec():
         inputs = tf.nn.embedding_lookup(embedding_tensor, word_ids)
     return inputs
 
-  def _build_cell(self, num_units, decoder_num_units, cell_type="LSTMCell"):
-    Cell = locate("tensorflow.contrib.rnn." + cell_type)
-    if Cell is None:
-      raise ValueError("Invalid cell type " + cell_type)
-    cell_enc_fw = Cell(num_units)
-    cell_enc_bw = Cell(num_units)
-    cell_enc = Cell(num_units)
-    cell_dec = Cell(decoder_num_units)
+  def build_cell(self, num_units, decoder_num_units, cell_type="LSTMCell"):
+    Cell = BN_LSTMCell
+    cell_enc_fw = Cell(num_units, is_training=self.mode)
+    cell_enc_bw = Cell(num_units, is_training=self.mode)
+    cell_enc = Cell(num_units, is_training=self.mode)
+    cell_dec = Cell(decoder_num_units, is_training=self.mode)
+    # Cell = locate("tensorflow.contrib.rnn." + cell_type)
+    # if Cell is None:
+      # raise ValueError("Invalid cell type " + cell_type)
+    # cell_enc_fw = Cell(num_units)
+    # cell_enc_bw = Cell(num_units)
+    # cell_enc = Cell(num_units)
+    # cell_dec = Cell(decoder_num_units)
 
     # Dropout wrapper
     cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
@@ -359,10 +371,12 @@ class EncDecClass(EncDec):
   def __init__(self, hparams, embedding, emb_dim):
     super().__init__(hparams, embedding, emb_dim, output_layer=None)
 
+    self.model_type = "classification"
+
     # Class label
     with tf.name_scope("class_labels"):
       # Labels for classification, single label per sample
-      self.classes = tf.placeholder(self.intX, shape=[None, num_classes])
+      self.classes = tf.placeholder(self.intX, shape=[None, hparams.num_classes])
 
     with tf.name_scope("classification"):
       if hparams.class_over_sequence == True:
@@ -371,11 +385,11 @@ class EncDecClass(EncDec):
             decoded_outputs=self.decoded_outputs,
             pool_size=hparams.dec_out_units,
             max_seq_len=hparams.max_seq_len,
-            num_classes=num_classes)
+            num_classes=hparams.num_classes)
       else:
         # Classification input uses only sequence final state
         self.class_logits = self.output_logits(self.decoded_final_state.attention,
-                            hparams.dec_out_units, num_classes, "class_softmax")
+                  hparams.dec_out_units, hparams.num_classes, "class_softmax")
 
     # Classification loss
     self.loss = self.classification_loss(self.classes, self.class_logits)
@@ -387,8 +401,7 @@ class EncDecClass(EncDec):
     self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
 
     # Loss ###################
-    self.optimizer = self.get_optimizer(hparams.l_rate).minimize(\
-                                      self.cost, global_step=self.global_step)
+    self.optimize = self.optimize_step(cost,self.global_step)
 
   def sequence_class_logits(self, decoded_outputs, pool_size, max_seq_len, num_classes):
     """ Logits for the sequence """
@@ -453,18 +466,18 @@ class EncDecGen(EncDec):
     output_layer = tf.contrib.keras.layers.Dense(vocab_size, use_bias=False)
     super().__init__(hparams, embedding, emb_dim, output_layer=output_layer)
 
+    self.model_type="generative"
+
     # Sequence outputs over vocab, training
     self.seq_logits = self.decoded_outputs.rnn_output
 
-    # Generator loss per sample
-    # self.loss = self.sequence_loss(\
-                        # self.seq_logits, self.dec_targets, self.dec_weight_mask)
+    # Generator loss
     self.loss = self.sequence_loss(\
                         self.seq_logits, self.dec_targets, self.dec_input_len)
     self.cost = tf.reduce_mean(self.loss) # average across batch
 
-    # Loss ###################
-    self.optimizer = self.get_optimizer(hparams.l_rate).minimize(\
+    # Optimize ###################
+    self.optimize = self.optimize_step(hparams.l_rate).minimize(\
                                       self.cost, global_step=self.global_step)
 
     # Generated text ###################
@@ -479,9 +492,8 @@ class EncDecGen(EncDec):
     Arguments:
       logits : logits over predictions, [batch, seq_len, num_decoder_symb]
       targets : the class id, shape is [batch_size, seq_len], dtype int
-      weigth_mask : valid logits should have weight "1" and padding "0",
-        [batch_size, seq_len] of dtype float
     """
+    # creates mask [batch_size, seq_len]
     mask = tf.sequence_mask(seq_len, dtype=tf.float32)
 
     # We need to delete zeroed elements in targets, beyond max sequence

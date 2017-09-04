@@ -23,6 +23,7 @@ class Data():
     self._seq_len = [] # list of tuple(len_arg1, len_arg2)
     self._decoder_target = []
     self.orig_disc = [] # the original discourse, list from json to dict
+    self._sense_to_one_hot = {} # maps sense string to its encoding
 
   @property
   def path_source(self):
@@ -76,6 +77,14 @@ class Data():
     self._x = value
 
   @property
+  def sense_to_one_hot(self):
+    return self._sense_to_one_hot
+
+  @sense_to_one_hot.setter
+  def sense_to_one_hot(self, value):
+    self._sense_to_one_hot = value
+
+  @property
   def seq_len_encoder(self):
     """ Sequence length for encoder input """
     return self._seq_len[:,0]
@@ -86,9 +95,9 @@ class Data():
     return self._seq_len[:,1]
 
   @property
-  def decoder_mask(self):
-    """ Sequence length for decoder input """
-    return np.sign(self._x[1])
+  def num_classes(self):
+    """ Number of unique classes """
+    return self.classes.shape[1]
 
   def size(self):
     """ Samples in dataset """
@@ -96,6 +105,7 @@ class Data():
 
   def num_batches(self, batch_size):
     return self.size()//batch_size+(self.size()%batch_size>0)
+
 
 
 class MiniData():
@@ -131,7 +141,6 @@ class Preprocess():
         settings, # settings file as dict
         relation=None, # include only this relation
         max_vocab=None, # limit vocab size
-        random_negative=False,
         split_input=True, # boolean, split input into separate numpy arrays
         decoder_targets=False, # second arg without bos
         pad_tag = "<pad>", # padding tag
@@ -200,6 +209,7 @@ class Preprocess():
       data.x = self.pad_input(data.x, data.seq_len, self.split_input)
       data.decoder_target = self.pad_input(data.decoder_target, split=False)
 
+      data.sense_to_one_hot = self.sense_to_one_hot
     # self.weights_cross_entropy = (np.sum(y_train, axis=0)/np.sum(y_train))
 
     # Create vocab for all data
@@ -513,6 +523,8 @@ def settings(path):
   s['random_init_unknown'] = parse_bool(s['random_init_unknown'])
   s['max_vocab'] = parse_int(s['max_vocab'])
   s['tensorboard_write'] = parse_bool(s['tensorboard_write'])
+  s['split_input'] = parse_bool(s['split_input'])
+  s['save_alignment_history'] = parse_bool(s['save_alignment_history'])
 
   hparams = HParams(
     batch_size          = parse_int(s['hp']['batch_size']),
@@ -570,6 +582,43 @@ class HParams():
   def update(self, **kwargs):
     for k, v in kwargs.items():
       setattr(self, k, v)
+
+def get_data(hparams, settings):
+  """
+  Convenience function to create the datasets needed
+  Args:
+    hparams: HParam object
+    settings: settings dictionary
+  Returns:
+    A dictionary of train/validation/test sets, and possibly blind dataset.
+    Dictionary {k: v} is {dataset name: Data object}
+  """
+  dataset_name = settings['use_dataset']
+  data_class = Preprocess(
+              dataset_name = dataset_name,
+              relation = settings[dataset_name]['this_relation'],
+              max_vocab = settings['max_vocab'],
+              max_arg_len= hparams.max_arg_len,
+              maxlen=hparams.maxlen,
+              settings=settings,
+              split_input=settings['split_input'],
+              pad_tag = hparams.pad_tag,
+              unknown_tag = hparams.unknown_tag,
+              bos_tag = hparams.bos_tag,
+              eos_tag = hparams.eos_tag)
+  vocab = data_class.vocab
+  inv_vocab = data_class.inv_vocab
+
+  # Once vocab and inv_vocab created, update hparams with their index values
+  hparams.update(
+    num_classes = data_class.num_classes,
+    start_token = vocab[hparams.bos_tag],
+    end_token = vocab[hparams.eos_tag],
+  )
+
+  # Data sets as Data objects
+  dataset_dict = data_class.data_collect
+  return dataset_dict, vocab, inv_vocab
 
 def alignment(enc_in, dec_in, alignment, inv_vocab):
   """ process data and save alignments """

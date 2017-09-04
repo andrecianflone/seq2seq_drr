@@ -1,5 +1,5 @@
 {
-  "Comments_on_hp" : {
+  "Comments" : {
     "cell_units"    : "dimension of recurrent cells",
     "dec_out_units" : "dimension of decoder output",
     "max_seq_len"   : "maximum length of a sequence",
@@ -7,19 +7,21 @@
     "cell_type"     : "type of recurrent cell, LSTM or GRU",
     "bidirectional" : "if false, then unidirectional and no concat",
     "emb_trainable" : "if true embedding vectors are updated during training",
-    "optimizer"     : "AdamOptimizer or GradientDescentOptimizer"
+    "optimizer"     : "AdamOptimizer or GradientDescentOptimizer",
+    "split_input"   : "Set to true for x1,x2 as arg1 and arg2",
+    "save_alignment_history" : "Will save alignment matrix to disk"
   },
   "hp" : {
     "batch_size"          : "32",
     "cell_units"          : "32",
     "dec_out_units"       : "32",
     "num_layers"          : "2",
-    "keep_prob"           : "0.3",
+    "keep_prob"           : "0.5",
     "nb_epochs"           : "70",
     "early_stop_epoch"    : "10",
     "cell_type"           : "LSTMCell",
     "bidirectional"       : "True",
-    "optimizer"           : "AdamOptimizer",
+    "optimizer"           : "GradientDescentOptimizer",
     "l_rate"              : "0.001",
     "attention"           : "True",
     "class_over_sequence" : "False",
@@ -32,8 +34,10 @@
     "eos_tag"             : "<eos>",
     "emb_trainable"       : "False"
   },
+  "save_alignment_history" : "False",
+  "split_input"   : "True",
   "tensorboard_write" : "False",
-  "use_dataset" : "conll",
+  "use_dataset" : "one_v_all",
   "max_vocab" : "10000",
   "random_init_unknown" : "False",
   "embedding" : {
