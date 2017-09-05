@@ -59,7 +59,7 @@ def generate_text(sess, model, data, index, vocab, inv_vocab):
 def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
                     prog, writer=None):
   """ Train 'model' using 'data' for a single epoch """
-  fetch = [model.optimizer, model.cost, model.global_step]
+  fetch = [model.optimize, model.cost, model.global_step]
 
   if writer is not None:
     fetch.append(model.merged_summary_ops)

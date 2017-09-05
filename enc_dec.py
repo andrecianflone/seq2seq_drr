@@ -4,8 +4,7 @@ from tensorflow.contrib.rnn import DropoutWrapper
 from tensorflow.contrib.layers import xavier_initializer as glorot
 from utils import dense
 from pydoc import locate
-# from bnlstm import BN_LSTMCell
-from bnlstm2 import BNLSTMCell as BN_LSTMCell
+from bnlstm import BNLSTMCell
 
 class EncDec():
   """ Encoder Decoder """
@@ -145,18 +144,20 @@ class EncDec():
     return inputs
 
   def build_cell(self, num_units, decoder_num_units, cell_type="LSTMCell"):
-    Cell = BN_LSTMCell
-    cell_enc_fw = Cell(num_units, is_training=self.mode)
-    cell_enc_bw = Cell(num_units, is_training=self.mode)
-    cell_enc = Cell(num_units, is_training=self.mode)
-    cell_dec = Cell(decoder_num_units, is_training=self.mode)
-    # Cell = locate("tensorflow.contrib.rnn." + cell_type)
-    # if Cell is None:
-      # raise ValueError("Invalid cell type " + cell_type)
-    # cell_enc_fw = Cell(num_units)
-    # cell_enc_bw = Cell(num_units)
-    # cell_enc = Cell(num_units)
-    # cell_dec = Cell(decoder_num_units)
+    if cell_type == "BNLSTMCell":
+      Cell = BNLSTMCell
+      cell_enc_fw = Cell(num_units, is_training=self.mode)
+      cell_enc_bw = Cell(num_units, is_training=self.mode)
+      cell_enc = Cell(num_units, is_training=self.mode)
+      cell_dec = Cell(decoder_num_units, is_training=self.mode)
+    else:
+      Cell = locate("tensorflow.contrib.rnn." + cell_type)
+      if Cell is None:
+        raise ValueError("Invalid cell type " + cell_type)
+      cell_enc_fw = Cell(num_units)
+      cell_enc_bw = Cell(num_units)
+      cell_enc = Cell(num_units)
+      cell_dec = Cell(decoder_num_units)
 
     # Dropout wrapper
     cell_enc_fw = DropoutWrapper(cell_enc_fw, output_keep_prob=self.keep_prob)
@@ -401,7 +402,7 @@ class EncDecClass(EncDec):
     self.y_pred, self.y_true = self.predict(self.class_logits, self.classes)
 
     # Loss ###################
-    self.optimize = self.optimize_step(cost,self.global_step)
+    self.optimize = self.optimize_step(self.cost,self.global_step)
 
   def sequence_class_logits(self, decoded_outputs, pool_size, max_seq_len, num_classes):
     """ Logits for the sequence """
