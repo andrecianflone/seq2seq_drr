@@ -31,7 +31,7 @@ def make_data_set(pdtb, mapping, rng=None, sampling="down", equal_negative=True,
     types = ['Implicit', 'EntRel']):
   """
   From the master json, creates datasets of positive/negative class and
-  adds the top level mapped relation.
+  adds the mapped relation. If maps to top-level, then only top-level
 
   Arg:
     sampling: "down" or "over. If equal_negative is true, "down" will
@@ -387,12 +387,12 @@ if __name__ == "__main__":
 
   # Randomize and split even
   pdtb='pdtb.json'
-  mapping='mapping.json'
-  train_set, val_set, test_set =  make_equal_random_dataset(
-    pdtb, mapping, hold_val=0.2, hold_test=0.2,types = ['Explicit'])
+  mapping='mapping_none.json'
+  train_set, val_set, test_set = make_equal_random_dataset(
+    pdtb, mapping, hold_val=0.15, hold_test=0.15,types = ['Implicit', 'AltLex', 'Explicit', 'EntRel'])
 
   # Save the sets
-  dict_to_json(train_set, 'binary_explicit/one_v_all_train.json')
-  dict_to_json(val_set, 'binary_explicit/one_v_all_dev.json')
-  dict_to_json(test_set, 'binary_explicit/one_v_all_test.json')
+  dict_to_json(train_set, 'fine_binary_all/train.json')
+  dict_to_json(val_set, 'fine_binary_all/dev.json')
+  dict_to_json(test_set, 'fine_binary_all/test.json')
 
