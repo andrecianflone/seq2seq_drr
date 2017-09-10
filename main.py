@@ -55,6 +55,10 @@ data_class = Preprocess(
             bos_tag = settings['bos_tag'],
             eos_tag = settings['eos_tag'])
 
+# Get the integer value for bos and eos tags
+start_token = daata_class.vocab[settings['bos_tag']]
+end_token = daata_class.vocab[settings['eos_tag']]
+
 # Data sets as Data objects
 dataset_dict = data_class.data_collect
 
@@ -76,7 +80,7 @@ embedding = emb.get_embedding_matrix(\
 # Main stuff
 ###############################################################################
 def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
-              shuffle):
+              shuffle, mode_train):
   """ Calls models and yields results per batch """
   batches = make_batches(data, batch_size, num_batches, shuffle=shuffle)
   for batch in batches:
@@ -88,7 +92,8 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
              model.dec_input       : batch.decoder_input,
              model.dec_input_len   : batch.seq_len_decoder,
              model.dec_weight_mask : batch.decoder_mask,
-             model.keep_prob       : keep_prob
+             model.keep_prob       : keep_prob,
+             model.mode_train      : mode_train
            }
 
     result = sess.run(fetch,feed)
@@ -97,13 +102,13 @@ def call_model(sess, model, data, fetch, batch_size, num_batches, keep_prob,
 def train_one_epoch(sess, data, model, keep_prob, batch_size, num_batches,
                     prog, writer=None):
   """ Train 'model' using 'data' for a single epoch """
-  fetch = [model.class_optimizer, model.class_cost, model.global_step]
+  fetch = [model.optimizer, model.cost, model.global_step]
 
   if writer is not None:
     fetch.append(model.merged_summary_ops)
 
   batch_results = call_model(sess, model, data, fetch, batch_size, num_batches,
-                             keep_prob, shuffle=True)
+                             keep_prob, shuffle=True, mode_train=True)
   for result in batch_results:
     loss = result[1]
     global_step = result[2]
@@ -127,7 +132,7 @@ def classification_f1(sess, data, model, batch_size, num_batches_test):
   y_pred = np.zeros(data.size())
   y_true = np.zeros(data.size())
   batch_results = call_model(sess, model, data, fetch, batch_size,
-                                 num_batches_test, keep_prob=1, shuffle=False)
+               num_batches_test, keep_prob=1, shuffle=False, mode_train=False)
   start_id = 0
   for i, result in enumerate(batch_results):
     batch_size                           = result[0]
@@ -166,7 +171,7 @@ def test_set_decoder_loss(sess, model, batch_size, num_batches, prog):
   losses = np.zeros(num_batches_test) # to average the losses
   batch_w = np.zeros(num_batches_test) # batch weight
   batch_results = call_model(sess, model, data, fetch, batch_size, num_batches,
-                              keep_prob=1, shuffle=False)
+                              keep_prob=1, shuffle=False, mode_train=False)
   for i, result in enumerate(batch_results):
     # Keep track of losses to average later
     cur_b_size = result[0]
@@ -195,7 +200,7 @@ def language_model_class_loss():
     fetch = [model.batch_size, model.generator_loss, model.softmax_logits,
               model.dec_targets]
     batch_results = call_model(sess, model, data, fetch, batch_size,
-                               num_batches_test, keep_prob=1, shuffle=False)
+                 num_batches_test, keep_prob=1, shuffle=False, mode_train=False)
     j = 0
     for result in batch_results:
       cur_b_size = result[0]
@@ -283,6 +288,7 @@ def train(params):
 
   # Declare model with hyperparams
   with tf.Graph().as_default(), tf.Session() as sess:
+    tf.set_random_seed(1)
     model = EncDec(\
             num_units=params['cell_units'],
             dec_out_units=params['dec_out_units'],
@@ -292,6 +298,8 @@ def train(params):
             emb_dim=embedding.shape[1],
             cell_type=params['cell_type'],
             attention=params['attention'],
+            start_token = start_token,
+            end_token = end_token,
             bidirectional=params['bidirectional'],
             emb_trainable=params['emb_trainable'],
             class_over_sequence=params['class_over_sequence'],

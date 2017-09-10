@@ -130,3 +130,22 @@ class Embeddings():
     if out_of_model > 0:
       print("words randomly initialized: {}".format(out_of_model))
     return emb_matrix
+
+def get_embeddings(hparams, vocab, inv_vocab, settings):
+  """ Returns embedding numpy array """
+  # Word embeddings
+  emb = Embeddings(
+          vocab,
+          inv_vocab,
+          random_init_unknown=settings['random_init_unknown'],
+          unknown_tag = hparams.unknown_tag)
+
+  # embedding is a numpy array [vocab size x embedding dimension]
+  embedding = emb.get_embedding_matrix(\
+              word2vec_model_path=settings['embedding']['model_path'],
+              small_model_path=settings['embedding']['small_model_path'],
+              save=True,
+              load_saved=True)
+  emb_dim = embedding.shape[1]
+  return embedding, emb_dim
+

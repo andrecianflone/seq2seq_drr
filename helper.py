@@ -11,6 +11,7 @@ import os.path
 from conll_utils.scorer import f1_non_explicit
 
 dtype='int32' # default numpy int dtype
+np.random.seed(1)
 
 # TODO : checkout tf.contrib preprocessing for tokenization
 class Data():
@@ -22,6 +23,7 @@ class Data():
     self._seq_len = [] # list of tuple(len_arg1, len_arg2)
     self._decoder_target = []
     self.orig_disc = [] # the original discourse, list from json to dict
+    self._sense_to_one_hot = {} # maps sense string to its encoding
 
   @property
   def path_source(self):
@@ -75,6 +77,14 @@ class Data():
     self._x = value
 
   @property
+  def sense_to_one_hot(self):
+    return self._sense_to_one_hot
+
+  @sense_to_one_hot.setter
+  def sense_to_one_hot(self, value):
+    self._sense_to_one_hot = value
+
+  @property
   def seq_len_encoder(self):
     """ Sequence length for encoder input """
     return self._seq_len[:,0]
@@ -85,9 +95,9 @@ class Data():
     return self._seq_len[:,1]
 
   @property
-  def decoder_mask(self):
-    """ Sequence length for decoder input """
-    return np.sign(self._x[1])
+  def num_classes(self):
+    """ Number of unique classes """
+    return self.classes.shape[1]
 
   def size(self):
     """ Samples in dataset """
@@ -95,6 +105,7 @@ class Data():
 
   def num_batches(self, batch_size):
     return self.size()//batch_size+(self.size()%batch_size>0)
+
 
 
 class MiniData():
@@ -130,7 +141,6 @@ class Preprocess():
         settings, # settings file as dict
         relation=None, # include only this relation
         max_vocab=None, # limit vocab size
-        random_negative=False,
         split_input=True, # boolean, split input into separate numpy arrays
         decoder_targets=False, # second arg without bos
         pad_tag = "<pad>", # padding tag
@@ -199,6 +209,7 @@ class Preprocess():
       data.x = self.pad_input(data.x, data.seq_len, self.split_input)
       data.decoder_target = self.pad_input(data.decoder_target, split=False)
 
+      data.sense_to_one_hot = self.sense_to_one_hot
     # self.weights_cross_entropy = (np.sum(y_train, axis=0)/np.sum(y_train))
 
     # Create vocab for all data
@@ -507,60 +518,41 @@ def clean_str(string):
 def settings(path):
   """ Returns settings dictionary """
   with codecs.open(path, encoding='utf-8') as f:
-    settings = json.load(f)
+    s= json.load(f)
 
-  # Fix random init unknown
-  settings['random_init_unknown'] = parse_bool(settings['random_init_unknown'])
+  s['random_init_unknown'] = parse_bool(s['random_init_unknown'])
+  s['max_vocab'] = parse_int(s['max_vocab'])
+  s['tensorboard_write'] = parse_bool(s['tensorboard_write'])
+  s['split_input'] = parse_bool(s['split_input'])
+  s['save_alignment_history'] = parse_bool(s['save_alignment_history'])
 
-  # Fix max vocab
-  settings['max_vocab'] = parse_int(settings['max_vocab'])
+  hparams = HParams(
+    batch_size          = parse_int(s['hp']['batch_size']),
+    cell_units          = parse_int(s['hp']['cell_units']),
+    cell_type           = s['hp']['cell_type'],
+    optimizer           = s['hp']['optimizer'],
+    dec_out_units       = parse_int(s['hp']['dec_out_units']),
+    num_layers          = parse_int(s['hp']['num_layers']),
+    keep_prob           = parse_float(s['hp']['keep_prob']),
+    nb_epochs           = parse_int(s['hp']['nb_epochs']),
+    early_stop_epoch    = parse_int(s['hp']['early_stop_epoch']),
+    bidirectional       = parse_bool(s['hp']['bidirectional']),
+    l_rate              = parse_float(s['hp']['l_rate']),
+    attention           = parse_bool(s['hp']['attention']),
+    class_over_sequence = parse_bool(s['hp']['class_over_sequence']),
+    hidden_size         = parse_int(s['hp']['hidden_size']),
+    fc_num_layers       = parse_int(s['hp']['fc_num_layers']),
+    max_arg_len         = parse_int(s['hp']['max_arg_len']),
+    max_seq_len         = parse_int(s['hp']['max_arg_len']),
+    maxlen              = parse_int(s['hp']['max_arg_len'])*2,
+    unknown_tag         = s['hp']['unknown_tag'],
+    pad_tag             = s['hp']['pad_tag'],
+    bos_tag             = s['hp']['bos_tag'],
+    eos_tag             = s['hp']['eos_tag'],
+    emb_trainable       = s['hp']['emb_trainable']
+  )
 
-  # fix embedding trainable
-  settings['emb_trainable'] = parse_bool(settings['emb_trainable'])
-
-  # fix tensorboard write
-  settings['tensorboard_write'] = parse_bool(settings['tensorboard_write'])
-
-  # Fix training batch size
-  settings['hp']['batch_size'] = parse_int(settings['hp']['batch_size'])
-
-  # Fix hidden layer size
-  settings['hp']['cell_units'] = parse_int(settings['hp']['cell_units'])
-
-  # Fix output from decoder
-  settings['hp']['dec_out_units'] = parse_int(settings['hp']['dec_out_units'])
-
-  # Fix num layers
-  settings['hp']['num_layers'] = parse_int(settings['hp']['num_layers'])
-
-  # Fix dropout keep probability
-  settings['hp']['keep_prob'] = parse_float(settings['hp']['keep_prob'])
-
-  # Fix max training epochs
-  settings['hp']['nb_epochs'] = parse_int(settings['hp']['nb_epochs'])
-
-  # Fix stop after n epochs w/o improvement on val set
-  settings['hp']['early_stop_epoch'] = parse_int(settings['hp']['early_stop_epoch'])
-
-  # Fix bidirectional
-  settings['hp']['bidirectional'] = parse_bool(settings['hp']['bidirectional'])
-
-  # Fix learning rate
-  settings['hp']['learning_rate'] = parse_float(settings['hp']['learning_rate'])
-
-  # Fix attention
-  settings['hp']['attention'] = parse_bool(settings['hp']['attention'])
-
-  # Fix class over sequence
-  settings['hp']['class_over_sequence'] = parse_bool(settings['hp']['class_over_sequence'])
-
-  # Fix hidden_size
-  settings['hp']['hidden_size'] = parse_int(settings['hp']['hidden_size'])
-
-  # Fix hidden_size
-  settings['hp']['fc_num_layers'] = parse_int(settings['hp']['fc_num_layers'])
-
-  return settings
+  return hparams, s
 
 def parse_bool(val):
   if val == "True":
@@ -581,6 +573,52 @@ def parse_float(val):
     return None
   else:
     return float(val)
+
+class HParams():
+  def __init__(self, **kwargs):
+    for k, v in kwargs.items():
+      setattr(self, k, v)
+
+  def update(self, **kwargs):
+    for k, v in kwargs.items():
+      setattr(self, k, v)
+
+def get_data(hparams, settings):
+  """
+  Convenience function to create the datasets needed
+  Args:
+    hparams: HParam object
+    settings: settings dictionary
+  Returns:
+    A dictionary of train/validation/test sets, and possibly blind dataset.
+    Dictionary {k: v} is {dataset name: Data object}
+  """
+  dataset_name = settings['use_dataset']
+  data_class = Preprocess(
+              dataset_name = dataset_name,
+              relation = settings[dataset_name]['this_relation'],
+              max_vocab = settings['max_vocab'],
+              max_arg_len= hparams.max_arg_len,
+              maxlen=hparams.maxlen,
+              settings=settings,
+              split_input=settings['split_input'],
+              pad_tag = hparams.pad_tag,
+              unknown_tag = hparams.unknown_tag,
+              bos_tag = hparams.bos_tag,
+              eos_tag = hparams.eos_tag)
+  vocab = data_class.vocab
+  inv_vocab = data_class.inv_vocab
+
+  # Once vocab and inv_vocab created, update hparams with their index values
+  hparams.update(
+    num_classes = data_class.num_classes,
+    start_token = vocab[hparams.bos_tag],
+    end_token = vocab[hparams.eos_tag],
+  )
+
+  # Data sets as Data objects
+  dataset_dict = data_class.data_collect
+  return dataset_dict, vocab, inv_vocab
 
 def alignment(enc_in, dec_in, alignment, inv_vocab):
   """ process data and save alignments """

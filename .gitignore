@@ -3,6 +3,7 @@ data/
 conll_utils/
 embedding.txt
 *.sw*
+think.md
 
 tags
 trials*
