@@ -387,12 +387,28 @@ if __name__ == "__main__":
 
   # Randomize and split even
   pdtb='pdtb.json'
-  mapping='mapping_none.json'
-  train_set, val_set, test_set = make_equal_random_dataset(
-    pdtb, mapping, hold_val=0.15, hold_test=0.15,types = ['Implicit', 'AltLex', 'Explicit', 'EntRel'])
+  # Mapping/directory name pair
+  mappings={
+      'mapping_to_top_w_entrel.json': 'coarse_binary_split_entrel',
+      'mapping_to_top.json': 'coarse_binary',
+      'mapping_none': 'fine_binary'
+  }
 
-  # Save the sets
-  dict_to_json(train_set, 'fine_binary_all/train.json')
-  dict_to_json(val_set, 'fine_binary_all/dev.json')
-  dict_to_json(test_set, 'fine_binary_all/test.json')
+  types = {
+      'all': ['Implicit', 'AltLex', 'Explicit', 'EntRel'],
+      'implicit_no_entrel': ['Implicit'],
+      'implicit_entrel': ['Implicit', 'EntRel'],
+      'explicit': ['Explicit'],
+  }
+  mapping = 'mapping_to_top_w_entrel.json'
+  for rel, ls in types.items():
+    folder = mappings[mapping] + '_' + rel
+    if not os.path.exists(folder): os.makedirs(folder)
+    train_set, val_set, test_set = make_equal_random_dataset(
+      pdtb, mapping, hold_val=0.15, hold_test=0.15,types = ls)
+
+    # Save the sets
+    dict_to_json(train_set, folder+'/train.json')
+    dict_to_json(val_set, folder+'/dev.json')
+    dict_to_json(test_set, folder+'/test.json')
 

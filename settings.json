@@ -37,7 +37,7 @@
   "save_alignment_history" : "False",
   "split_input"   : "True",
   "tensorboard_write" : "False",
-  "use_dataset" : "one_v_all",
+  "use_dataset" : "conll",
   "max_vocab" : "10000",
   "random_init_unknown" : "False",
   "embedding" : {
